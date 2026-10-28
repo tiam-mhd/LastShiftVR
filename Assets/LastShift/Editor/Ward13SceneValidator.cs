@@ -36,6 +36,24 @@ public static class Ward13SceneValidator
             problems++;
         }
         if (!Has("THE WATCHER")) { Debug.LogError("[Ward13] Missing ghost root"); problems++; }
+        var chase = Object.FindFirstObjectByType<PatientPathChase>(FindObjectsInactive.Include);
+        if (chase == null || chase.player == null)
+        {
+            Debug.LogError("[Ward13] AI path target is unassigned; the patient cannot track the player.");
+            problems++;
+        }
+        var director = Object.FindFirstObjectByType<GhostDirector>(FindObjectsInactive.Include);
+        if (director == null || director.monster == null || director.rig == null)
+        {
+            Debug.LogError("[Ward13] Persistent ghost encounter controller not connected.");
+            problems++;
+        }
+        int activeShadowLights = 0;
+        foreach (var light in Object.FindObjectsByType<Light>(FindObjectsSortMode.None))
+            if (light.shadows != LightShadows.None) activeShadowLights++;
+        if (activeShadowLights > 0)
+            Debug.LogWarning("[Ward13 / Performance] " + activeShadowLights +
+                " realtime lights still render shadows. Review URP shadow atlas warnings.");
 
         // Original PNG is reference artwork only. Its absence must never
         // force a fake portrait-based character back into the game.
