@@ -92,6 +92,13 @@ public static class Ward13PatientBuilder
         // Build two walkable rooms outside the original corridor.
         Room("WARD 12 / TREATMENT", 1, 1.85f, -1.3f, 5f);
         Room("WARD 14 / SURGERY", -1, 7.25f, 4.1f, 10.4f);
+        // Continuous thresholds close the previous small floor gaps at side doors.
+        Box("Treatment room solid doorway threshold",
+            new Vector3(2.53f, -.085f, 1.85f), new Vector3(.62f, .17f, 1.83f),
+            ceramic, world, true);
+        Box("Surgery room solid doorway threshold",
+            new Vector3(-2.53f, -.085f, 7.25f), new Vector3(.62f, .17f, 1.83f),
+            ceramic, world, true);
         TreatmentRoom();
         SurgeryRoom();
 
@@ -195,10 +202,21 @@ public static class Ward13PatientBuilder
         ConnectElectricCircuits(systems, game);
         ConnectEnvironmentalHorror(systems, game);
 
+        var playerRig = GameObject.Find("PCVR Player Rig");
+        if (playerRig != null)
+        {
+            var limits = playerRig.GetComponent<WardPlayerBounds>();
+            if (limits == null) limits = playerRig.AddComponent<WardPlayerBounds>();
+            limits.head = Camera.main != null ? Camera.main.transform : null;
+        }
+
         if (Camera.main != null)
         {
             Camera.main.nearClipPlane = .045f;
             Camera.main.farClipPlane = 72f;
+            // Outside the environment should never display Unity's yellow skybox.
+            Camera.main.clearFlags = CameraClearFlags.SolidColor;
+            Camera.main.backgroundColor = new Color(.008f, .014f, .02f);
         }
         var scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
         EditorSceneManager.MarkSceneDirty(scene);
