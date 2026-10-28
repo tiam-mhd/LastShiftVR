@@ -174,21 +174,16 @@ public static class Ward13AtmosphereBuilder
                 new Vector3(.10f, .09f, .24f), amber, root, false);
         }
 
-        // Visible signage facing the spawn point (-Z).
-        Text("WARD 13  |  RESTRICTED AREA", new Vector3(0, 2.15f, -5.5f),
-            .15f, teal.color, root);
-        Text("3 FUSES  >  POWER BOX  >  EXIT", new Vector3(0, 1.91f, -5.5f),
-            .105f, pale.color, root);
-        Text("KEEP THE LIGHT ON", new Vector3(0, 2.10f, 13.2f),
-            .12f, red.color, root);
-        Text("EXIT", new Vector3(0, 2.54f, -11.35f), .22f, amber.color, root);
+        // Keep readable signage subtle. The old 3D text was oversized and
+        // its back face rendered mirrored when approached from the opposite side.
+        Text("EXIT", new Vector3(0, 2.54f, -11.35f), .032f, amber.color, root);
         // Old live-updating mission board remains available, but move it onto the right wall.
         if (game.objectiveBoard != null)
         {
             game.objectiveBoard.transform.position = new Vector3(2.35f, 2.33f, -8.1f);
             game.objectiveBoard.transform.rotation = Quaternion.Euler(0, 90, 0);
             game.objectiveBoard.anchor = TextAnchor.UpperLeft;
-            game.objectiveBoard.characterSize = .042f;
+            game.objectiveBoard.characterSize = .009f;
         }
 
         // Add dark visual mass, shoulders, limbs, skull and glowing eyes.
