@@ -63,6 +63,8 @@ namespace LastShift
             monster.gameObject.SetActive(true);
             monster.enabled = false;
             if (visual != null) { visual.EnsureVisual(); visual.SetOpacity(0f); }
+            var driver = monster.GetComponent<PatientAnimationDriver>();
+            if (driver != null) driver.Play(PatientAction.Appear, firstSightingSeconds);
             PlayAtMonster(stinger);
             float t = 0f;
 
@@ -75,6 +77,8 @@ namespace LastShift
                 yield return null;
             }
             if (visual != null) visual.SetOpacity(1f);
+            var driver = monster.GetComponent<PatientAnimationDriver>();
+            if (driver != null) driver.Play(PatientAction.Vanish, .65f);
             monster.gameObject.SetActive(false);
             monster.enabled = true;
             sighting = null;
@@ -87,6 +91,8 @@ namespace LastShift
             if (visual != null) visual.SetOpacity(1f);
             monster.transform.position = new Vector3(0f, 0f, 14f);
             monster.Wake(game, game.flashlight);
+            var driver = monster.GetComponent<PatientAnimationDriver>();
+            if (driver != null) driver.Play(PatientAction.Scare, 1.1f);
             PlayAtMonster(stinger);
             nextBreath = Time.time + 2f;
         }
