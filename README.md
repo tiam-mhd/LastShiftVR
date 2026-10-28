@@ -1,61 +1,39 @@
-# LastShiftVR — The Patient v0.3 (Windows PCVR / Meta Quest Link)
+# LastShiftVR — The Patient 3D / Windows PCVR
 
-A Unity 6 **playable-source horror prototype**, not a pre-built or hardware-tested Windows EXE.
+A Unity 6 + URP + OpenXR survival-horror prototype for Windows PCVR, using Meta Quest 2/3/3S through Quest Link. Also includes keyboard/mouse desktop preview.
 
-## What's new in v0.3
+## Latest release source: The Patient 3D
+The original user-supplied character image is the front texture of a **volumetric Unity skinned mesh** with **seven articulated bones**. Procedural C# animations cover idle, stare, walking, running, recoil from light, scare, attack, appearing and vanishing.
 
-- The **actual character artwork supplied by the user** is stored at
-  `Assets/LastShift/Resources/GhostGirlReference.png` and displayed during play
-  as an alpha-transparent **2D camera-facing impostor**. This is **not** an animated,
-  rigged humanoid 3D model. Replace `GhostGirlVisual` with a licensed rigged
-  model for full 3D appearance and animation.
-- New walkable Ward 12 (Treatment) and Ward 14 (Surgery) connected to the central corridor.
-- Procedural aged concrete, stained tile and corroded steel texture generation
-  during scene creation, along with surgical props and reactive atmosphere.
-- Three highlighted pickup stations and a three-slot power panel.
-- One use per slot, then one more for the breaker switch and escape door.
-- First-fuse apparition, second-fuse chase, flashlight stun, 3D procedural ghost cues.
-- On-screen desktop HUD and a built-in Unity editor scene validator.
+**Important model limitation:** The original reference supplies only a frontal view. Front texture details are retained; geometry depth, sides and the reverse are inferred. This is a playable prototype reconstruction, not a lossless 360-degree realistic sculpt or a mocap animation package.
 
-## Install into your existing Unity 6 Universal 3D project
+The repository also includes the standalone **static** model `Assets/LastShift/Models/ThePatient_ScanVolume.obj` and its `.mtl`, referencing the original `Resources/GhostGirlReference.png` texture. The **animated** mesh is generated and serialized by Unity as `Assets/LastShift/GeneratedMeshes/ThePatient_3D_Rigged.asset` when you build the scene.
 
-**BACK UP** your existing scene first: this generator overwrites the generated
-`Ward13_Prototype.unity` scene, not your other authored scenes.
+## Setup on Windows
 
-1. Update your local copy of **`Assets/LastShift`** from this repository. The
-   other repo folders are NOT a complete URP project setup; do not overwrite
-   your working project's `ProjectSettings` or `Packages`.
-2. Check that Input System, XR Hands, XR Plugin Management, and OpenXR packages
-   are installed in Unity. Use Assets > Refresh and fix red Console compile errors.
-3. Select **Tools > Last Shift > Generate Ward 13 - The Patient v0.3**.
-   Do NOT use the v0.2 generator for this level.
-4. Select **Tools > Last Shift > Validate Ward 13 v0.3**.
-5. Open Game view > Play. With no XR headset, F8 forces Desktop Preview.
-6. Controls: WASD move, mouse look, E/Left Mouse interact, F torch, Esc cursor.
-   On Quest Link: left/right sticks move/turn, right Trigger interact, right Grip torch.
-7. Pick up three orange fuses (corridor, treatment, surgery). The ghost appears
-   after the first and starts hunting after the second. Go back to POWER BOX,
-   interact three times to insert the fuses, then once more to flip the breaker.
-   Interact with EXIT to win.
+1. Install Unity 6 (URP/Universal 3D project, Windows Build Support).
+2. From Unity Registry install **Input System**, **XR Plug-in Management**, **OpenXR Plugin** and **XR Hands**.
+3. Download GitHub ZIP and copy **only** `Assets/LastShift` to an existing Unity Universal 3D project's `Assets`. Keep that project's original `Packages` and `ProjectSettings`.
+4. Wait for error-free C# compilation after `Assets > Refresh`.
+5. In Unity select the **one and only** production menu:
+   `Tools > Last Shift > Build Final Ward 13 - The Patient 3D`
+6. Open `Assets/LastShift/Scenes/Ward13_Prototype.unity` (opened by builder) and press Play.
 
-## Runtime and build
+**Desktop:** WASD move, mouse look, E interact, F flashlight. **PCVR Quest Link:** left stick move, right stick snap-turn, right trigger interact, right grip flashlight.
 
-Standalone Windows x86_64, OpenXR enabled for PC/Mac/Linux Standalone, Oculus
-Touch Controller profile configured, Meta Quest Link set as active OpenXR
-runtime, launch Link from the headset. Windows EXE hand tracking is **not
-guaranteed** via Quest Link; controllers are the supported default.
+The 3D character appears during scripted events and chases the player. The rig is saved in the generated scene and can be inspected by temporarily enabling `THE WATCHER` in the Hierarchy (when not in Play). The character is hidden initially by design.
 
-## Repository state and important limitations
+## Game loop
+Collect three fuses, escape the Patient, insert them into the power cabinet one at a time, flip the breaker, then open the exit. Fuse pickups flicker the electrical system, each inserted fuse powers a circuit and the breaker restores ward illumination.
 
-- This repo includes scripts, the user-supplied character reference texture,
-  runtime systems and editor scene generator; scene + generated materials are
-  built on your own machine via the above editor menu.
-- No precompiled Windows build is provided, no verified Quest device test was
-  possible here, and Unity editor compilation must still be checked locally.
-- The enemy picture is a 2D stand-in in 3D space, not 3D rigging or animation.
-- Fuse pickup uses point-and-click/Trigger into inventory; panel insertion uses
-  sequential interaction. True physics grabbing/insertion is future work.
-- The procedural textures and simple props are a step above the blockout,
-  **not photorealistic scanned assets**.
+## Only final menus
+Legacy generators and debug/test/validation entries are hidden or removed from `Tools > Last Shift`. There is one final scene generation entry.
 
-[راهنمای جامع فارسی](README_FA.md)
+## Caveats
+- This is a prototype. Procedural bone poses do not match the quality of artist-authored animations.
+- Existing environment art is procedural and not photorealistic.
+- No prebuilt .exe is included. Code has not been compiled or tested on an actual Unity + Quest hardware setup in the authoring environment.
+- Windows standalone Quest Link hand tracking is not guaranteed; controllers remain supported.
+- Unity can regenerate the scene and locally generated 3D mesh; **back up manual scene changes** before re-running the generator.
+
+[Persian setup and full notes](README_FA.md)
