@@ -155,11 +155,12 @@ namespace LastShift
                 float tone = 0f;
                 if (seed == 19)
                 {
-                    foreach (float hit in new float[] { .13f, .67f, 1.19f })
-                    {
-                        float dt = t - hit;
-                        if (dt >= 0f) envelope += Mathf.Exp(-dt * 21f);
-                    }
+                    // Calculate three percussive envelopes without allocating
+                    // a new array once per audio sample (~29k garbage objects).
+                    float d0 = t - .13f, d1 = t - .67f, d2 = t - 1.19f;
+                    if (d0 >= 0f) envelope += Mathf.Exp(-d0 * 21f);
+                    if (d1 >= 0f) envelope += Mathf.Exp(-d1 * 21f);
+                    if (d2 >= 0f) envelope += Mathf.Exp(-d2 * 21f);
                     tone = Mathf.Sin(2f * Mathf.PI * 73f * t) * .5f + noise * .40f;
                 }
                 else if (seed == 83)
