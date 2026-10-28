@@ -1,42 +1,61 @@
-# LastShiftVR — Ward 13 (Unity Windows PCVR Prototype)
+# LastShiftVR — The Patient v0.3 (Windows PCVR / Meta Quest Link)
 
-A **greybox horror prototype**, with three collectible fuses, a flashlight, a monster chase, a locked exit, and win/loss states. Built with Unity 6, OpenXR and C#. Designed to run on Windows and on Meta Quest 2/3/3S using Quest Link.
+A Unity 6 **playable-source horror prototype**, not a pre-built or hardware-tested Windows EXE.
 
-**No compiled EXE, full Unity URP project configuration, pre-generated scene, or finished art is supplied. Unity installation and hardware testing are still required.** The scene and materials are created in Unity using the editor menu.
+## What's new in v0.3
 
-For step-by-step instructions **in Persian**, see [README_FA.md](README_FA.md).
+- The **actual character artwork supplied by the user** is stored at
+  `Assets/LastShift/Resources/GhostGirlReference.png` and displayed during play
+  as an alpha-transparent **2D camera-facing impostor**. This is **not** an animated,
+  rigged humanoid 3D model. Replace `GhostGirlVisual` with a licensed rigged
+  model for full 3D appearance and animation.
+- New walkable Ward 12 (Treatment) and Ward 14 (Surgery) connected to the central corridor.
+- Procedural aged concrete, stained tile and corroded steel texture generation
+  during scene creation, along with surgical props and reactive atmosphere.
+- Three highlighted pickup stations and a three-slot power panel.
+- One use per slot, then one more for the breaker switch and escape door.
+- First-fuse apparition, second-fuse chase, flashlight stun, 3D procedural ghost cues.
+- On-screen desktop HUD and a built-in Unity editor scene validator.
 
-## Fast preview without VR hardware
-1. Install Unity 6.1+ (Windows Build Support), then in Unity Hub create a new **Universal 3D (URP)** project.
-2. Install Input System, XR Plug-in Management, Unity OpenXR and XR Hands using Package Manager. Accept input system restart prompts.
-3. Download this repository and copy **only** its `Assets/LastShift` folder into your new project's `Assets` folder. Do not replace the new URP project's `ProjectSettings` and `Packages` with the incomplete source-only example configuration.
-4. Wait for Unity to compile without red Console errors.
-5. Choose **Tools > Last Shift > Generate Prototype Ward 13**; the generated scene is saved under `Assets/LastShift/Scenes/Ward13_Prototype.unity`.
-6. Press **Play** in the Unity Game view. Without XR headset, DesktopPreview automatically activates. Press **F8** to force desktop mode if required.
-7. **WASD** walk, **Mouse** look, **E / Left Click** interact, **F** toggle flashlight, **Left / Right Arrow** snap-turn, **Escape** unlock the cursor.
+## Install into your existing Unity 6 Universal 3D project
 
-## Quest Link PCVR
-1. Install and run Meta Quest Link for Windows, connect your Quest by USB Link or Air Link, and launch Link in the headset.
-2. Set Meta Quest Link as the active OpenXR runtime.
-3. Unity > Edit > Project Settings > XR Plug-in Management > **PC, Mac & Linux Standalone** > enable OpenXR. Under OpenXR > Interaction Profiles, select **Oculus Touch Controller Profile**.
-4. Press Play with Quest Link active. Or choose Build Profiles > Windows x86_64 > Build and run the generated EXE with Link active.
-5. Controllers: **left stick** move, **right stick** snap-turn, **right trigger** interact, **right grip** flashlight.
-6. Optional hand tracking: pinch interactions only when XR Hands tracking data is actually provided. Official Quest Link Windows hand tracking support is limited to Unity Editor testing; **do not assume hand tracking works in a standalone EXE**.
+**BACK UP** your existing scene first: this generator overwrites the generated
+`Ward13_Prototype.unity` scene, not your other authored scenes.
 
-## Repository layout
-- `Assets/LastShift/Scripts/Runtime`: gameplay state, enemy, flashlight, input, rig, optional hand interactions, desktop preview.
-- `Assets/LastShift/Editor/LastShiftSceneBuilder.cs`: builds a basic Ward 13 scene and stores its generated materials.
-- `Packages/manifest.json`, `ProjectSettings/ProjectVersion.txt`: **reference only**, not a full URP template project.
-- `README_FA.md`: complete Persian usage and troubleshooting guide.
-- `.gitignore`: Unity ignores.
+1. Update your local copy of **`Assets/LastShift`** from this repository. The
+   other repo folders are NOT a complete URP project setup; do not overwrite
+   your working project's `ProjectSettings` or `Packages`.
+2. Check that Input System, XR Hands, XR Plugin Management, and OpenXR packages
+   are installed in Unity. Use Assets > Refresh and fix red Console compile errors.
+3. Select **Tools > Last Shift > Generate Ward 13 - The Patient v0.3**.
+   Do NOT use the v0.2 generator for this level.
+4. Select **Tools > Last Shift > Validate Ward 13 v0.3**.
+5. Open Game view > Play. With no XR headset, F8 forces Desktop Preview.
+6. Controls: WASD move, mouse look, E/Left Mouse interact, F torch, Esc cursor.
+   On Quest Link: left/right sticks move/turn, right Trigger interact, right Grip torch.
+7. Pick up three orange fuses (corridor, treatment, surgery). The ghost appears
+   after the first and starts hunting after the second. Go back to POWER BOX,
+   interact three times to insert the fuses, then once more to flip the breaker.
+   Interact with EXIT to win.
 
-## Constraints
-- The scene contains primitive cubes and a capsule enemy, not finished artwork.
-- No physical hand meshes or realistic hand-grabbing are included.
-- No compiled Windows build is attached. The project has not been compiled/tested in Unity in this environment.
-- If you find a red Console error, copy its entire message for diagnosis.
+## Runtime and build
 
-## Official documentation
-- https://developers.meta.com/vr/documentation/unity/unity-link/
-- https://developers.meta.com/vr/documentation/unity/unity-handtracking-overview/
-- https://developers.meta.com/vr/documentation/unity/unity-xr-plugin/
+Standalone Windows x86_64, OpenXR enabled for PC/Mac/Linux Standalone, Oculus
+Touch Controller profile configured, Meta Quest Link set as active OpenXR
+runtime, launch Link from the headset. Windows EXE hand tracking is **not
+guaranteed** via Quest Link; controllers are the supported default.
+
+## Repository state and important limitations
+
+- This repo includes scripts, the user-supplied character reference texture,
+  runtime systems and editor scene generator; scene + generated materials are
+  built on your own machine via the above editor menu.
+- No precompiled Windows build is provided, no verified Quest device test was
+  possible here, and Unity editor compilation must still be checked locally.
+- The enemy picture is a 2D stand-in in 3D space, not 3D rigging or animation.
+- Fuse pickup uses point-and-click/Trigger into inventory; panel insertion uses
+  sequential interaction. True physics grabbing/insertion is future work.
+- The procedural textures and simple props are a step above the blockout,
+  **not photorealistic scanned assets**.
+
+[راهنمای جامع فارسی](README_FA.md)
