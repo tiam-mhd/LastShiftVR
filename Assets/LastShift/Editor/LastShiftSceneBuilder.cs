@@ -8,7 +8,7 @@ using LastShift;
 
 public static class LastShiftSceneBuilder {
  const string root="Assets/LastShift";
- [MenuItem("Tools/Last Shift/Generate Prototype Ward 13")]
+ // Internal helper; no legacy/test menu entry.
  public static void Build(){
   if(!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())return;
   if(!AssetDatabase.IsValidFolder(root+"/Scenes"))AssetDatabase.CreateFolder(root,"Scenes");
