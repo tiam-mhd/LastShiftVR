@@ -67,18 +67,22 @@ namespace LastShift
             if (driver != null) driver.Play(PatientAction.Appear, firstSightingSeconds);
             PlayAtMonster(stinger);
             float t = 0f;
+            bool leaving = false;
 
             while (t < firstSightingSeconds)
             {
                 t += Time.deltaTime;
                 float visibility = Mathf.Clamp01(t * 2f)
                     * Mathf.Clamp01((firstSightingSeconds - t) * 2.5f);
+                if (!leaving && t > firstSightingSeconds - .9f)
+                {
+                    leaving = true;
+                    if (driver != null) driver.Play(PatientAction.Vanish, 1f);
+                }
                 if (visual != null) visual.SetOpacity(visibility);
                 yield return null;
             }
-            if (visual != null) visual.SetOpacity(1f);
-            var driver = monster.GetComponent<PatientAnimationDriver>();
-            if (driver != null) driver.Play(PatientAction.Vanish, .65f);
+            if (visual != null) visual.SetOpacity(0f);
             monster.gameObject.SetActive(false);
             monster.enabled = true;
             sighting = null;
