@@ -363,7 +363,7 @@ public static class Ward13PatientBuilder
             AssetDatabase.CreateFolder(Base, "GeneratedMaterials");
         var path = dir + "/" + name + ".mat";
         var saved = AssetDatabase.LoadAssetAtPath<Material>(path);
-        if (saved != null) { PatientSurfaceGenerator.Apply(saved, name, color); return saved; }
+        if (saved != null) { PatientSurfaceGenerator.Apply(saved, name, color); EditorUtility.SetDirty(saved); return saved; }
         var shader = Shader.Find("Universal Render Pipeline/Lit");
         if (shader == null) shader = Shader.Find("Standard");
         var m = new Material(shader) { name = name };
