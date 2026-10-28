@@ -1,66 +1,46 @@
-# Ghost Girl Animated — integration update
+# LastShiftVR — Ghost Girl Animated (Windows PCVR)
 
-The repository contains the actual **`shabannn.fbx` (~21.9 MB)** at
-`Assets/LastShift/Characters/ThePatient/Model/shabannn.fbx`.
-The final Unity scene builder now auto-detects that file without renaming it, instantiates its actual renderable 3D geometry, fits and grounds the model, and converts incompatible materials to URP/Lit while preserving any imported textures.
+A Unity 6 / URP / OpenXR VR horror prototype, played on Windows with a Meta Quest 2/3/3S via Quest Link (also includes desktop keyboard/mouse preview).
 
-**Automatic animation mapping:** The importer queries actual `AnimationClip` subassets of this FBX and any optional animation files, maps matching names to the ten game states, and logs exact mapping/fallbacks in Unity Console. The actual embedded clip count and names were not independently inspectable from this environment; the Unity import report is authoritative.
+## Character asset is present
 
-**Visibility safety:** The real FBX can be visible and chase even if fewer than four clips exist. If animation data is absent, there is only a modest whole-body fallback; the game does not claim artist-quality skeletal walk/run/attack without the necessary clips. Environmental horror remains enabled.
+**Actual imported model:** `Assets/LastShift/Characters/ThePatient/Model/shabannn.fbx` (21,853,936 bytes).
 
-**Scene rebuild is required** after copying the updated `Assets/LastShift` folder into the Unity project. In Unity use only:
-`Tools > Last Shift > Build Final Ward 13 - Real Patient FBX`.
+The final Unity builder auto-detects this file, instantiates its genuine renderable 3D geometry, fits it to human scale (roughly 1.72m), grounds it, repairs incompatible imported materials to URP/Lit, scans the actual AnimationClip subassets and maps matching clips to the game's 10 character states.
 
-Creator attribution: **Ghost Girl Animated by Shaban Hafizsalim (shabaninteractive)**,
-[Sketchfab model](https://sketchfab.com/3d-models/ghost-girl-animated-1091b3ee172f4951aaeafa2581f9de1d), CC BY 4.0.
-See `Assets/LastShift/Characters/ThePatient/ATTRIBUTION.md`. Keep credit with distributed builds.
+**Important:** The animation count and names inside this binary FBX could not be independently examined here. At scene-build time Unity prints `[LastShift / Model]` and `[LastShift / Anim]` reports listing the actual clips and whether each state uses a native match or a fallback. If only one source clip exists, mapping ten states does not create ten distinct artist-authored actions. If there are no imported clips, the 3D model still appears and moves with basic whole-body reactions while an appropriate rig is being prepared.
 
----
+The fake portrait extruder, 2D cutout and scan-volume code remain removed.
 
-# LastShiftVR — Real 3D Character Integration (Windows PCVR)
+## Set up and run on Windows
 
-Unity 6 + URP + OpenXR horror game prototype for Windows. Play through Meta Quest Link with Quest 2 / 3 / 3S, using controllers; keyboard/mouse desktop preview also works.
-
-## No more fake 3D
-The old image-extruded portrait mesh, 2D billboard, standalone scan-volume OBJ/MTL, and synthetic bone-pose animation scripts have been **removed**. The original character PNG remains only as an artist's reference, not an in-game renderer.
-
-**A finished photorealistic character model is NOT bundled.** The real 3D asset and authentic animation clips must be supplied separately. The game will never spawn an invisible lethal enemy when required assets are missing.
-
-## New pipeline
-
-Expected files:
-- `Assets/LastShift/Characters/ThePatient/Model/ThePatient.fbx` OR `ThePatient.prefab`
-- `Assets/LastShift/Characters/ThePatient/Animations/`: clips named **Idle, Walk, Run, Attack** (required), plus Stare, Frightened, Scare, Appear, Vanish, Stunned (optional)
-- `Assets/LastShift/Resources/GhostGirlReference.png`: reference image only
-
-Unity model import requires:
-- an actual rigged **SkinnedMeshRenderer**
-- **Humanoid** rig with a valid Avatar
-- appropriately retargeted actual AnimationClips
-- correct URP/PBR materials and real 360-degree geometry
-
-`PatientCharacterImporter.cs` searches the specified directory for an FBX or prefab, imports clips (including FBX subclips), generates `ThePatient.controller`, and binds the model and Animator to existing enemy AI. `PatientCharacterRig.cs` plays those named states via cross-fading, with no fabricated motions.
-
-## Open in Unity
-1. Install Unity 6, create a new Universal 3D project, and install Input System, XR Plug-in Management, OpenXR Plugin and XR Hands. Windows Build Support for Windows EXE.
-2. Copy **only** `Assets/LastShift` from this repo to your Unity project; preserve its working `Packages` and `ProjectSettings`.
-3. **Delete stale local files** if you previously installed the fake 3D version: `GhostGirlVisual.cs`, `PatientAnimationDriver.cs`, `ThePatient_ScanVolume.obj`, `ThePatient_ScanVolume.mtl`, and `GeneratedMeshes/ThePatient_3D_Rigged.asset`.
-4. Add your real `ThePatient.fbx` and animation clips to the specified Character folders. Select FBX in Unity Inspector > Rig > Humanoid > Create From This Model > Apply. Import animation FBXs as Humanoid.
-5. From Unity menu choose the **only final production action**:
-
+1. Close Unity and back up your project.
+2. Download this GitHub repository's latest `main` ZIP. Verify the `shabannn.fbx` file is included.
+3. Cleanly replace the Unity project's **entire `Assets/LastShift` folder**. Do NOT merge it over previous sources or overwrite the existing Unity project's Packages/ProjectSettings. `tools/Sync-LastShift.ps1` can back up and replace it.
+4. Open your Unity 6 Universal 3D project with the required XR/Input packages. Wait for the FBX import and C# compilation; fix any red Console errors before continuing.
+5. Run the **only** custom menu entry:
    `Tools > Last Shift > Build Final Ward 13 - Real Patient FBX`
+6. In the scene Hierarchy expand `THE WATCHER`; there should be a child `The Patient - Ghost Girl Animated (real FBX)`. The parent is intentionally inactive in edit mode.
+7. Press Play. An opening sighting is scheduled about 2.5 seconds after start. Collecting the second fuse starts the active hunt. The environmental scare system remains intact.
 
-6. Open/Play the generated `Assets/LastShift/Scenes/Ward13_Prototype.unity`. If the model/clips are missing, the AI chase is disabled but the fuse gameplay and lighting still function.
+### Animation map
 
-### Controls
-- Desktop: WASD, mouse, E interact, F flashlight, Esc free cursor.
-- Meta PCVR: Quest Link with active OpenXR runtime; left stick move, right stick snap-turn, right trigger interact, right grip flashlight.
-- Hand tracking on Windows EXE is NOT guaranteed by Quest Link. Controllers remain supported.
+The director and AI request `Idle, Walk, Run, Stare, Frightened, Scare, Attack, Appear, Vanish, Stunned`. The importer searches the actual FBX's AnimationClips and any optional clips under `Characters/ThePatient/Animations`. Matching names are used first, then an available clip may be reused as a fallback. Without motion clips, the actual 3D mesh has only a minimal whole-body fallback.
 
-### Rig requirements
-See `Characters/ThePatient/ART_BRIEF.md` for likeness, materials, full 360-degree topology, realistic hair/clothing and animation requirements.
+### Player controls
 
-## Status
-This repository contains **source and import integration**, not an artist-made character FBX, animations or a prebuilt Windows EXE. Unity compilation and on-device testing are required. The single frontal reference image cannot guarantee a perfect unseen-side/back likeness.
+Desktop: WASD move, mouse look, E interact, F flashlight. Meta PCVR: left stick move, right stick snap turn, right trigger interact, right grip flashlight. Windows standalone Quest Link hand tracking availability depends on runtime support; controller fallback is maintained.
 
-[Persian instructions / راهنمای فارسی](README_FA.md)
+### Troubleshooting
+
+- No model: regenerate the scene; look for `[LastShift / Model]` and `[Ward13]` Console messages. The FBX must appear under `THE WATCHER`.
+- Pink/missing textures: check `[LastShift / Materials]` warnings, then extract/relink FBX textures under its Unity Materials tab.
+- Missing skeletal animations: check `[LastShift / Anim]` clip names and add compatible animation FBXs; re-run the final builder.
+- Old DEBUG menus: your old `Assets/LastShift` folder was merged rather than replaced; use the clean sync script.
+- The source has not been compiled or tested on actual Unity/Quest hardware in the authoring environment.
+
+### License and credits
+
+**Ghost Girl Animated** by **Shaban Hafizsalim (shabaninteractive)** on [Sketchfab](https://sketchfab.com/3d-models/ghost-girl-animated-1091b3ee172f4951aaeafa2581f9de1d), licensed **CC BY 4.0**. Retain the credit in a distributed game; see [ATTRIBUTION.md](Assets/LastShift/Characters/ThePatient/ATTRIBUTION.md).
+
+[راهنمای فارسی](README_FA.md)
