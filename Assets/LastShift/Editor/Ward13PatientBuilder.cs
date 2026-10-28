@@ -234,6 +234,9 @@ public static class Ward13PatientBuilder
             Camera.main.clearFlags = CameraClearFlags.SolidColor;
             Camera.main.backgroundColor = new Color(.008f, .014f, .02f);
         }
+        // Repair unsupported shader/material references BEFORE serializing
+        // the scene. This also audits inactive FBX renderers used during a scare.
+        Ward13SceneMaterialAudit.RepairAndReport();
         var scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
         EditorSceneManager.MarkSceneDirty(scene);
         EditorSceneManager.SaveScene(scene);
