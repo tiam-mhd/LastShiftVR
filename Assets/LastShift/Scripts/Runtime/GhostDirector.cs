@@ -3,15 +3,16 @@ using UnityEngine;
 
 namespace LastShift
 {
-    /// <summary>Staged, non-camera-shaking VR horror encounters.</summary>
+    /// <summary>VR-safe scripted encounters for the imported REAL 3D patient.</summary>
     public sealed class GhostDirector : MonoBehaviour
     {
         public LastShiftGame game;
         public LastShiftMonster monster;
-        public GhostGirlVisual visual;
+        public PatientCharacterRig rig;
         public Light[] crisisLights;
-        public float firstSightingSeconds = 6.5f;
+        public float firstSightingSeconds = 5f;
         public float openingDelay = 2.5f;
+        public bool CharacterReady => monster != null && rig != null && rig.IsReady;
 
         private Coroutine sighting;
         private AudioSource ghostAudio;
@@ -28,19 +29,21 @@ namespace LastShift
 
         private IEnumerator Start()
         {
-            // A non-hostile early sighting confirms the actual character art is visible
-            // before any fuses are collected. It fades out before the real chase.
             yield return new WaitForSeconds(openingDelay);
-            if (game != null && !game.HasEnded && game.CollectedFuses == 0 && !hunting)
-            {
-                Debug.Log("[LastShift] Opening sighting: The Patient should appear in the corridor.");
+            if (CharacterReady && game != null && !game.HasEnded &&
+                game.CollectedFuses == 0 && !hunting)
                 sighting = StartCoroutine(FirstSighting());
-            }
         }
 
         public void OnFuseCountChanged(int count)
         {
             if (game == null || game.HasEnded || monster == null) return;
+            if (!CharacterReady)
+            {
+                Debug.LogWarning("[LastShift] Ghost event skipped: real model / animation clips not installed.");
+                return;
+            }
+
             if (count == 1)
             {
                 if (sighting != null) StopCoroutine(sighting);
@@ -49,61 +52,56 @@ namespace LastShift
             else if (count == 2)
             {
                 if (sighting != null) StopCoroutine(sighting);
+                sighting = null;
                 StartHunt();
             }
         }
 
         private IEnumerator FirstSighting()
         {
-            // At ~6 meters from the entrance, visible in flashlight range.
+            if (!CharacterReady) yield break;
             float z = -2.25f;
             if (Camera.main != null)
                 z = Mathf.Clamp(Camera.main.transform.position.z + 6.5f, -2.25f, 11.5f);
             monster.transform.position = new Vector3(0f, 0f, z);
             monster.gameObject.SetActive(true);
             monster.enabled = false;
-            if (visual != null) { visual.EnsureVisual(); visual.SetOpacity(0f); }
-            var driver = monster.GetComponent<PatientAnimationDriver>();
-            if (driver != null) driver.Play(PatientAction.Appear, firstSightingSeconds);
+            rig.SetVisible(true);
+            rig.PlayAction(PatientMotion.Appear, firstSightingSeconds * .45f);
             PlayAtMonster(stinger);
-            float t = 0f;
-            bool leaving = false;
 
-            while (t < firstSightingSeconds)
+            yield return new WaitForSeconds(Mathf.Max(.15f, firstSightingSeconds - .9f));
+            if (CharacterReady)
+                rig.PlayAction(PatientMotion.Vanish, .8f);
+            yield return new WaitForSeconds(.85f);
+
+            if (!hunting && monster != null)
             {
-                t += Time.deltaTime;
-                float visibility = Mathf.Clamp01(t * 2f)
-                    * Mathf.Clamp01((firstSightingSeconds - t) * 2.5f);
-                if (!leaving && t > firstSightingSeconds - .9f)
-                {
-                    leaving = true;
-                    if (driver != null) driver.Play(PatientAction.Vanish, 1f);
-                }
-                if (visual != null) visual.SetOpacity(visibility);
-                yield return null;
+                rig.SetVisible(false);
+                monster.gameObject.SetActive(false);
+                monster.enabled = true;
             }
-            if (visual != null) visual.SetOpacity(0f);
-            monster.gameObject.SetActive(false);
-            monster.enabled = true;
             sighting = null;
         }
 
         private void StartHunt()
         {
+            if (!CharacterReady) return;
             hunting = true;
             monster.enabled = true;
-            if (visual != null) visual.SetOpacity(1f);
             monster.transform.position = new Vector3(0f, 0f, 14f);
+            monster.gameObject.SetActive(true);
+            rig.SetVisible(true);
             monster.Wake(game, game.flashlight);
-            var driver = monster.GetComponent<PatientAnimationDriver>();
-            if (driver != null) driver.Play(PatientAction.Scare, 1.1f);
+            rig.PlayAction(PatientMotion.Scare, 1f);
             PlayAtMonster(stinger);
             nextBreath = Time.time + 2f;
         }
 
         private void Update()
         {
-            if (!hunting || monster == null || game == null || game.HasEnded || Camera.main == null)
+            if (!hunting || !CharacterReady || game == null ||
+                game.HasEnded || Camera.main == null)
                 return;
             float dist = Vector3.Distance(Camera.main.transform.position, monster.transform.position);
             if (dist < 7f && Time.time > nextBreath)
@@ -111,22 +109,26 @@ namespace LastShift
                 PlayAtMonster(whisper);
                 nextBreath = Time.time + Random.Range(2f, 4.3f);
             }
-            if (crisisLights != null)
-                foreach (var light in crisisLights)
-                    if (light != null && dist < 6f)
-                        light.intensity = Mathf.Lerp(light.intensity,
-                            .5f + Mathf.Sin(Time.time * 19f) * .25f, Time.deltaTime * 4f);
+            if (crisisLights == null) return;
+            foreach (var light in crisisLights)
+                if (light != null && dist < 6f)
+                    light.intensity = Mathf.Lerp(light.intensity,
+                        .5f + Mathf.Sin(Time.time * 19f) * .25f, Time.deltaTime * 4f);
         }
 
         public void OnGameEnded()
         {
             hunting = false;
-            if (sighting != null) StopCoroutine(sighting);
+            if (sighting != null)
+            {
+                StopCoroutine(sighting);
+                sighting = null;
+            }
         }
 
         private void PlayAtMonster(AudioClip clip)
         {
-            if (monster == null || clip == null) return;
+            if (monster == null || clip == null || !CharacterReady) return;
             if (ghostAudio == null)
             {
                 ghostAudio = monster.gameObject.AddComponent<AudioSource>();
@@ -148,9 +150,9 @@ namespace LastShift
             {
                 float t = i / (float)rate;
                 float fade = Mathf.Min(1f, t * 12f, (length - t) * 5f);
-                samples[i] = amplitude * fade * (
-                    Mathf.Sin(2f * Mathf.PI * frequency * t) * .63f +
-                    Mathf.Sin(2f * Mathf.PI * (frequency * .51f) * t) * .35f);
+                samples[i] = amplitude * fade *
+                    (Mathf.Sin(2f * Mathf.PI * frequency * t) * .63f +
+                     Mathf.Sin(2f * Mathf.PI * (frequency * .51f) * t) * .35f);
             }
             var result = AudioClip.Create(title, n, 1, rate, false);
             result.SetData(samples, 0);
