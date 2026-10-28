@@ -18,7 +18,7 @@ public static class Ward13PatientBuilder
     private static Material concrete, grime, trim, metal, ceramic, blood, pale, rubber;
     private static Material rust, red, amber, powered, unpowered, frosted;
 
-    [MenuItem("Tools/Last Shift/Generate Ward 13 - The Patient v0.3")]
+    [MenuItem("Tools/Last Shift/Build Final Ward 13 - The Patient 3D")]
     public static void Build()
     {
         // The v0.2 scene builder intentionally creates a new scene. Warn users to save
@@ -138,8 +138,11 @@ public static class Ward13PatientBuilder
         var visualGhost = monster.gameObject.AddComponent<GhostGirlVisual>();
         visualGhost.height = 1.83f;
         visualGhost.preparedMaterial = GhostVisibilityMaterial();
+        SavePatientRigAsAsset(visualGhost);
         monster.gameObject.AddComponent<PatientPathChase>();
-        monster.chaseSpeed = 1.12f;
+        monster.chaseSpeed = .95f;
+        monster.runSpeed = 1.85f;
+        monster.runTriggerDistance = 5f;
 
         var director = systems.AddComponent<GhostDirector>();
         director.game = game;
@@ -358,6 +361,37 @@ public static class Ward13PatientBuilder
     }
 
 
+    /// <summary>
+    /// The rig is baked into a genuine Unity Mesh asset, not merely instantiated in Play mode.
+    /// The generated 3D model and bones are serialized into Ward13_Prototype.unity.
+    /// </summary>
+    private static void SavePatientRigAsAsset(GhostGirlVisual visual)
+    {
+        visual.EnsureVisual();
+        Mesh mesh = visual.GeneratedMesh;
+        SkinnedMeshRenderer skinned = visual.ModelRenderer;
+        if (mesh == null || skinned == null)
+        {
+            Debug.LogError("[LastShift] Patient 3D mesh generation failed. Verify readable GhostGirlReference texture.");
+            return;
+        }
+
+        const string directory = "Assets/LastShift/GeneratedMeshes";
+        if (!AssetDatabase.IsValidFolder(directory))
+            AssetDatabase.CreateFolder(Base, "GeneratedMeshes");
+        const string asset = directory + "/ThePatient_3D_Rigged.asset";
+        if (AssetDatabase.LoadAssetAtPath<Mesh>(asset) != null)
+            AssetDatabase.DeleteAsset(asset);
+
+        AssetDatabase.CreateAsset(mesh, asset);
+        skinned.sharedMesh = AssetDatabase.LoadAssetAtPath<Mesh>(asset);
+        skinned.sharedMaterial = visual.preparedMaterial;
+        skinned.updateWhenOffscreen = true;
+        EditorUtility.SetDirty(skinned);
+        Debug.Log("[LastShift] Saved 3D rigged character mesh: " + asset +
+                  " | 7 articulated bones | procedural skeletal animations.");
+    }
+
     /// <summary>Explicitly referenced transparent material avoids URP shader stripping.</summary>
     private static Material GhostVisibilityMaterial()
     {
@@ -375,8 +409,16 @@ public static class Ward13PatientBuilder
             material = new Material(shader) { name = "The Patient - Always Visible" };
             AssetDatabase.CreateAsset(material, path);
         }
-        var texture = AssetDatabase.LoadAssetAtPath<Texture2D>(
-            "Assets/LastShift/Resources/GhostGirlReference.png");
+        const string texturePath = "Assets/LastShift/Resources/GhostGirlReference.png";
+        var importer = AssetImporter.GetAtPath(texturePath) as TextureImporter;
+        if (importer != null && (!importer.isReadable || !importer.alphaIsTransparency))
+        {
+            importer.isReadable = true;
+            importer.alphaIsTransparency = true;
+            importer.mipmapEnabled = true;
+            importer.SaveAndReimport();
+        }
+        var texture = AssetDatabase.LoadAssetAtPath<Texture2D>(texturePath);
         if (texture == null)
             Debug.LogError("[LastShift] Missing GhostGirlReference.png. Download the current Assets/LastShift folder.");
         if (material.HasProperty("_BaseMap")) material.SetTexture("_BaseMap", texture);
