@@ -7,7 +7,7 @@ using UnityEngine.Rendering;
 using LastShift;
 
 /// <summary>
-/// The Patient v0.3. Rebuilds the disposable Ward13_Prototype scene from scratch.
+/// Ward 13 final scene builder. Uses only real imported FBX 3D character assets.
 /// The layout includes one corridor, a side treatment room, a surgery ward,
 /// three fuse stations, a four-interaction power panel and a ghost encounter.
 /// </summary>
@@ -18,7 +18,7 @@ public static class Ward13PatientBuilder
     private static Material concrete, grime, trim, metal, ceramic, blood, pale, rubber;
     private static Material rust, red, amber, powered, unpowered, frosted;
 
-    [MenuItem("Tools/Last Shift/Build Final Ward 13 - The Patient 3D")]
+    [MenuItem("Tools/Last Shift/Build Final Ward 13 - Real Patient FBX")]
     public static void Build()
     {
         // The v0.2 scene builder intentionally creates a new scene. Warn users to save
@@ -182,7 +182,7 @@ public static class Ward13PatientBuilder
         EditorSceneManager.MarkSceneDirty(scene);
         EditorSceneManager.SaveScene(scene);
         AssetDatabase.SaveAssets();
-        Debug.Log("[LastShift v0.3] The Patient, two wards, fuse panel, horror events generated. Press Play.");
+        Debug.Log("[LastShift] Final Ward built. Real 3D The Patient is enabled only when the FBX and required clips are installed.");
     }
 
     private static void RemoveDoorDecoration(float x, float z)
