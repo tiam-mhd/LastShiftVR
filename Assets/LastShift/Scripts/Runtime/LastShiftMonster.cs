@@ -3,18 +3,19 @@ using UnityEngine;
 
 namespace LastShift
 {
-    /// <summary>Patient pursuit and a readable, 1.35s in-front-of-view capture reveal.</summary>
+    /// <summary>
+    /// Real FBX horror enemy. Moves through real door openings, respects
+    /// world geometry, cannot walk into the Unity sky, and never teleports
+    /// into the camera or across walls to display a jumpscare.
+    /// </summary>
     public sealed class LastShiftMonster : MonoBehaviour
     {
-        public float chaseSpeed = 1.08f;
-        public float runSpeed = 1.9f;
-        public float runTriggerDistance = 5f;
-        public bool IsHunting => hunting && !attacking;
-        public bool IsAttacking => attacking;
-        public bool IsStunned { get; private set; }
-        public float captureDistance = 1.12f;
-        public float acceleration = 1.3f;
-        public float revealSeconds = 1.35f;
+        public float chaseSpeed = 1.05f;
+        public float runSpeed = 1.68f;
+        public float runTriggerDistance = 4.75f;
+        public float captureDistance = 1.10f;
+        public float acceleration = 1.6f;
+        public float revealSeconds = 1.25f;
 
         private LastShiftGame game;
         private FlashlightBehaviour torch;
@@ -24,24 +25,31 @@ namespace LastShift
         private bool hunting;
         private bool attacking;
         private float currentSpeed;
-        public float CurrentSpeed => currentSpeed; // Animator reads chase velocity; do not expose mutable state.
         private Coroutine captureRoutine;
+        private readonly RaycastHit[] obstacleHits = new RaycastHit[24];
+
+        public bool IsHunting => hunting && !attacking;
+        public bool IsAttacking => attacking;
+        public bool IsStunned { get; private set; }
+        public float CurrentSpeed => currentSpeed;
 
         public void Wake(LastShiftGame owner, FlashlightBehaviour source)
         {
             game = owner;
             torch = source;
-            if (Camera.main != null) head = Camera.main.transform;
+            head = Camera.main != null ? Camera.main.transform : null;
             path = GetComponent<PatientPathChase>();
             rig = GetComponent<PatientCharacterRig>();
+
             if (rig == null || !rig.IsReady)
             {
-                Debug.LogWarning("[LastShift] Chase cancelled: real animated 3D patient not installed.");
+                Debug.LogWarning("[LastShift] Cannot activate enemy without real visible FBX mesh.");
                 hunting = false;
                 enabled = false;
                 return;
             }
-            currentSpeed = .3f;
+
+            currentSpeed = 0f;
             attacking = false;
             IsStunned = false;
             hunting = true;
@@ -53,6 +61,8 @@ namespace LastShift
         public void StopChasing()
         {
             hunting = false;
+            currentSpeed = 0f;
+            IsStunned = false;
             if (!attacking && captureRoutine != null)
             {
                 StopCoroutine(captureRoutine);
@@ -64,81 +74,122 @@ namespace LastShift
         {
             if (!hunting || attacking || game == null || game.HasEnded) return;
             if (head == null && Camera.main != null) head = Camera.main.transform;
-            if (head == null) return;
+            if (head == null || !WardSpatial.Contains(head.position)) return;
 
-            Vector3 flat = head.position - transform.position;
-            flat.y = 0f;
-            if (flat.magnitude < captureDistance && HasClearSight())
+            Vector3 offset = head.position - transform.position;
+            offset.y = 0f;
+
+            // A capture requires an actual, unobstructed approach; no capture through walls.
+            if (offset.magnitude <= captureDistance && HasClearSight())
             {
                 captureRoutine = StartCoroutine(CaptureReveal());
                 return;
             }
 
             bool stunned = torch != null &&
-                torch.HoldsMonster(transform.position + Vector3.up * 1.13f, transform);
+                torch.HoldsMonster(transform.position + Vector3.up * 1.12f, transform);
             IsStunned = stunned;
             if (stunned)
             {
-                currentSpeed = Mathf.MoveTowards(currentSpeed, 0f, Time.deltaTime * 4.3f);
+                currentSpeed = Mathf.MoveTowards(currentSpeed, 0f, Time.deltaTime * 4f);
                 return;
             }
 
-            var destination = path != null ? path.Target(transform.position) : head.position;
-            destination.y = transform.position.y;
-            var direction = destination - transform.position;
-            float speedTarget = flat.magnitude < runTriggerDistance ? runSpeed : chaseSpeed;
-            currentSpeed = Mathf.MoveTowards(currentSpeed, speedTarget, Time.deltaTime * acceleration);
-            if (direction.sqrMagnitude > .015f)
+            Vector3 target = path != null ? path.Target(transform.position) : head.position;
+            target.y = transform.position.y;
+            Vector3 direction = target - transform.position;
+            float desiredSpeed = offset.magnitude < runTriggerDistance ? runSpeed : chaseSpeed;
+            currentSpeed = Mathf.MoveTowards(currentSpeed, desiredSpeed,
+                Time.deltaTime * acceleration);
+            if (direction.sqrMagnitude < .025f) return;
+
+            direction.Normalize();
+            float step = currentSpeed * Time.deltaTime;
+            if (TryMove(direction * step) ||
+                TryMove(Vector3.Project(direction, Vector3.right) * step) ||
+                TryMove(Vector3.Project(direction, Vector3.forward) * step))
             {
-                transform.position = Vector3.MoveTowards(transform.position,
-                    destination, currentSpeed * Time.deltaTime);
                 transform.rotation = Quaternion.Slerp(transform.rotation,
-                    Quaternion.LookRotation(direction.normalized, Vector3.up),
-                    Time.deltaTime * 4f);
+                    Quaternion.LookRotation(direction, Vector3.up), Time.deltaTime * 3.5f);
             }
+        }
+
+        private bool TryMove(Vector3 delta)
+        {
+            if (delta.sqrMagnitude < .0000001f) return false;
+            Vector3 next = transform.position + delta;
+            if (!WardSpatial.Contains(next)) return false;
+
+            Vector3 direction = delta.normalized;
+            float distance = delta.magnitude;
+            var origin = transform.position + Vector3.up * .95f;
+            int hits = Physics.SphereCastNonAlloc(origin, .27f, direction, obstacleHits,
+                distance + .045f, Physics.DefaultRaycastLayers,
+                QueryTriggerInteraction.Ignore);
+
+            for (int i = 0; i < hits; i++)
+            {
+                Collider col = obstacleHits[i].collider;
+                if (col == null) continue;
+                if (col.transform == transform || col.transform.IsChildOf(transform))
+                    continue;
+                if (head != null && col.transform.IsChildOf(head.root)) continue;
+                return false;
+            }
+
+            transform.position = next;
+            return true;
         }
 
         private bool HasClearSight()
         {
             if (head == null) return false;
-            Vector3 origin = transform.position + Vector3.up * 1.4f;
-            Vector3 towardsHead = head.position - origin;
-            if (towardsHead.sqrMagnitude < .02f) return true;
-            // Ground and ward geometry block the capture; the player's controller
-            // or CharacterController can be the first hit and should be accepted.
-            if (!Physics.Raycast(origin, towardsHead.normalized, out var hit,
-                                 towardsHead.magnitude, Physics.DefaultRaycastLayers,
-                                 QueryTriggerInteraction.Ignore))
-                return true;
-            if (hit.transform.IsChildOf(transform)) return true;
-            if (head.IsChildOf(hit.transform) || hit.transform.IsChildOf(head.root)) return true;
-            return false;
+            Vector3 origin = transform.position + Vector3.up * 1.30f;
+            Vector3 vector = head.position - origin;
+            float distance = vector.magnitude;
+            if (distance < .05f) return true;
+            int hits = Physics.RaycastNonAlloc(new Ray(origin, vector / distance), obstacleHits,
+                distance, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+            for (int i = 0; i < hits; i++)
+            {
+                Collider col = obstacleHits[i].collider;
+                if (col == null || col.transform == transform || col.transform.IsChildOf(transform))
+                    continue;
+                if (col.transform.IsChildOf(head.root)) return true;
+                return false; // real wall, furniture, or closed door obstructs the attack
+            }
+            return true;
         }
 
         private IEnumerator CaptureReveal()
         {
             attacking = true;
             hunting = false;
-            if (rig == null || !rig.IsReady) yield break;
+            if (rig == null || !rig.IsReady)
+            {
+                attacking = false;
+                yield break;
+            }
+            currentSpeed = 0f;
             rig.SetVisible(true);
             rig.PlayAction(PatientMotion.Attack, revealSeconds);
 
-            // Do not move the VR camera: the ghost steps into the player's view instead.
-            // This prevents a game-over message from covering an invisible offscreen enemy.
+            // Remain in the hallway/ward at the actual contact position.
+            // The old version moved the monster directly into the camera view
+            // and accidentally displayed it outside the hospital walls.
             float elapsed = 0f;
             while (elapsed < revealSeconds)
             {
                 if (game == null || game.HasEnded || head == null) break;
-                Vector3 flatForward = Vector3.ProjectOnPlane(head.forward, Vector3.up);
-                if (flatForward.sqrMagnitude < .0001f) flatForward = head.forward;
-                flatForward.Normalize();
-                Vector3 revealPoint = head.position + flatForward * 1.65f;
-                revealPoint.y = head.position.y - 1.45f;
-                transform.position = Vector3.Lerp(transform.position, revealPoint,
-                    Mathf.Clamp01(Time.deltaTime * 9f));
+                Vector3 toPlayer = head.position - transform.position;
+                toPlayer.y = 0f;
+                if (toPlayer.sqrMagnitude > .02f)
+                    transform.rotation = Quaternion.Slerp(transform.rotation,
+                        Quaternion.LookRotation(toPlayer.normalized), Time.deltaTime * 8f);
                 elapsed += Time.deltaTime;
                 yield return null;
             }
+
             if (game != null && !game.HasEnded) game.Caught();
             captureRoutine = null;
         }
