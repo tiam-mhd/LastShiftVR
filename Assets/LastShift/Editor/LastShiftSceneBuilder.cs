@@ -10,6 +10,10 @@ public static class LastShiftSceneBuilder {
  const string root="Assets/LastShift";
  // Internal helper; no legacy/test menu entry.
  public static void Build(){
+  if(EditorApplication.isPlayingOrWillChangePlaymode){
+   Debug.LogWarning("[LastShift] Exit Play Mode before creating a scene.");
+   return;
+  }
   if(!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())return;
   if(!AssetDatabase.IsValidFolder(root+"/Scenes"))AssetDatabase.CreateFolder(root,"Scenes");
   var scene=EditorSceneManager.NewScene(NewSceneSetup.EmptyScene,NewSceneMode.Single);
