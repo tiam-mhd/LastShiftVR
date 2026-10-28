@@ -123,10 +123,8 @@ public static class LastShiftSceneBuilder {
    AssetDatabase.CreateFolder("Assets/LastShift","GeneratedMaterials");
   string assetPath=dir+"/"+name.Replace(" ","_")+".mat";
   var saved=AssetDatabase.LoadAssetAtPath<Material>(assetPath);
-  if(saved!=null)return saved;
-  var shader=Shader.Find("Universal Render Pipeline/Lit");
-  if(shader==null)shader=Shader.Find("Standard");
-  var m=new Material(shader){name=name};
+  if(saved!=null){Ward13UrpMaterialTools.Repair(saved,c);return saved;}
+  var m=new Material(Ward13UrpMaterialTools.LitShader()){name=name};
   if(m.HasProperty("_BaseColor"))m.SetColor("_BaseColor",c);
   if(m.HasProperty("_Color"))m.SetColor("_Color",c);
   AssetDatabase.CreateAsset(m,assetPath);
