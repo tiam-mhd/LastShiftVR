@@ -42,6 +42,7 @@ namespace LastShift
         public bool IsReady => HasModel &&
             characterRoot.GetComponentInChildren<SkinnedMeshRenderer>(true) != null &&
             animator.runtimeAnimatorController != null &&
+            animator.avatar != null && animator.avatar.isValid && animator.avatar.isHuman &&
             Has(PatientMotion.Idle) && Has(PatientMotion.Walk) &&
             Has(PatientMotion.Run) && Has(PatientMotion.Attack);
 
