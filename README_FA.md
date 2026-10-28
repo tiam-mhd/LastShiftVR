@@ -1,3 +1,39 @@
+# رفع فوری خطای قرمز نور و صفحه صورتی — Unity 6 (آخرین اصلاحیه)
+
+از اسکرین‌شات جدید، خطای قطعی این است:
+
+```text
+ArgumentNullException: Value cannot be null. Parameter name: dest
+UnityEngine.Renderer.GetPropertyBlock(...)
+LastShift.WardPowerLighting.Update() ... WardPowerLighting.cs:147
+```
+
+در نسخه جدید `WardPowerLighting` قبل از فراخوانی GetPropertyBlock، `MaterialPropertyBlock` را در صورت نبودن می‌سازد و در تغییر هر نشانگر وضعیت را پاک می‌کند. این خطا دیگر نباید تکرار شود.
+
+**صفحه کاملاً صورتی خطای مستقل رندر/متریال است، نه لزوماً نتیجه همان Exception.** Unity از رنگ Magenta برای Shader نامعتبر، غایب یا ناسازگار با URP استفاده می‌کند. همچنین FBX مدل Ghost Girl دارای اشیای سینمایی از جمله Sky است. در نسخه فعلی `PatientCharacterRig` فقط Rendererهای شاخه واقعی `zombie_Walk` را فعال می‌کند؛ Sky را دوباره روشن نمی‌کند.
+
+## تغییرات رندر صحنه
+- `Ward13SceneMaterialAudit.cs` به Editor اضافه شده و **خودکار** در پایان ساخت صحنه اجرا می‌شود؛ منوی اضافی DEBUG یا TEST اضافه نشده است.
+- تمام Rendererهای صحنه (حتی غیرفعال) را برای متریال‌های Missing، Built-in یا Shader نامعتبر بررسی می‌کند، و در صورت امکان نسخه سازگار URP/Lit را به‌عنوان Asset مستقل داخل `GeneratedMaterials/SceneShaderRepairs` می‌سازد.
+- متریال اصلی FBX و تکسچرهای DDS را در فایل‌های اصلی تغییر نمی‌دهد. متریال‌های TextMeshPro، UI و Sprite از تبدیل سطحی کنار گذاشته می‌شوند.
+- Rendererهای Sky متعلق به FBX را غیرفعال می‌کند و گزارش `[LastShift / Render Audit]` در Console چاپ می‌کند.
+- **محدودیت:** اگر مشکل از نصب/تنظیمات خود URP، کامپایل Shader، یا باگ GPU Resident Drawer در Unity 6 باشد، اسکریپت تعمیر متریال به تنهایی کافی نیست.
+
+## مراحل الزامی نصب
+1. Play را خاموش کن، Unity را **کامل ببند** و از پروژه خودت بکاپ بگیر.
+2. جدیدترین ZIP مخزن را دانلود کن: `https://github.com/tiam-mhd/LastShiftVR`.
+3. پوشه `Assets/LastShift` موجود را **به محل بکاپ بیرون از Assets انتقال بده** و پوشه جدید را کامل کپی کن. صرفاً Merge/Overwrite نکن.
+4. Unity را باز کن؛ برای تکمیل Import و Compile صبر کن.
+5. در **Edit Mode** فقط یک منو را اجرا کن: `Tools > Last Shift > Build Final Ward 13 - Real Patient FBX`.
+6. Console را بررسی کن. باید پیامی مثل `[LastShift / Render Audit] Renderers checked: ..., repaired URP material slots: ..., disabled external FBX skies: ...` ثبت شده باشد.
+7. Play را بزن و تصویر Game را بررسی کن. **صحنه قبلی با ارجاع‌های خراب ممکن است همچنان صورتی بماند**؛ تا وقتی مرحله Build دوباره انجام نشده از همان صحنه قبلی برای نتیجه‌گیری استفاده نکن.
+8. اگر صفحه باز هم کاملاً صورتی است: `Edit > Project Settings > Graphics` و `Quality` باید URP Asset معتبر داشته باشند. Shader و Material یک Renderer صورتی را در Inspector بررسی کن. در Unity 6 می‌توانی موقتاً از قسمت URP Asset، گزینه `GPU Resident Drawer` را `Disabled` بگذاری تا ناسازگاری‌های Shader/Batching را از مشکل جدا کنی. این کار تشخیصی است؛ لزوماً علت اصلی نیست.
+9. از Console متن خطاهای قرمز بعد از **ساخت نسخه جدید** و پیام `[LastShift / Render Audit]` را بفرست؛ آن‌ها مشخص می‌کنند هنوز مشکل در متریال، Pipeline یا شیء بزرگ خارجی مانده است.
+
+**وضعیت اطمینان:** رفع null در سورس و اتصال ممیزی رندر در GitHub تأیید شده‌اند؛ اما Unity 6 روی کامپیوتر تو از این محیط اجرا و تست نشده و رفع قطعی صفحه صورتی هنوز قابل اثبات نیست.
+
+---
+
 # اصلاحیه اصلی v0.7 — دشمن دائمی + جلوگیری از باخت نامرئی + کاهش لگ فیوز (2026-10-28)
 
 ## ریشه خطاها
