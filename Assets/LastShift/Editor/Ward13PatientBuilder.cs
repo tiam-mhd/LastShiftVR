@@ -18,9 +18,29 @@ public static class Ward13PatientBuilder
     private static Material concrete, grime, trim, metal, ceramic, blood, pale, rubber;
     private static Material rust, red, amber, powered, unpowered, frosted;
 
-    [MenuItem("Tools/Last Shift/Build Final Ward 13 - Real Patient FBX")]
+    private const string MenuPath = "Tools/Last Shift/Build Final Ward 13 - Real Patient FBX";
+
+    [MenuItem(MenuPath, true)]
+    private static bool CanBuild()
+    {
+        return !EditorApplication.isPlayingOrWillChangePlaymode &&
+               !EditorApplication.isCompiling &&
+               !EditorApplication.isUpdating;
+    }
+
+    [MenuItem(MenuPath)]
     public static void Build()
     {
+        if (EditorApplication.isPlayingOrWillChangePlaymode)
+        {
+            Debug.LogWarning("[LastShift] Exit Play Mode first. The final scene builder is EDIT-MODE ONLY.");
+            return;
+        }
+        if (EditorApplication.isCompiling || EditorApplication.isUpdating)
+        {
+            Debug.LogWarning("[LastShift] Wait for Unity script compilation / asset import before building.");
+            return;
+        }
         if (!Ward13UrpMaterialTools.ValidateEnvironment()) return;
         // The v0.2 scene builder intentionally creates a new scene. Warn users to save
         // any manual changes BEFORE running this generator.
