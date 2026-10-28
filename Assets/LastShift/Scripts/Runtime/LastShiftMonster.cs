@@ -150,13 +150,16 @@ namespace LastShift
             if (distance < .05f) return true;
             int hits = Physics.RaycastNonAlloc(new Ray(origin, vector / distance), obstacleHits,
                 distance, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+            // RaycastNonAlloc does not guarantee nearest-hit order. Any true
+            // blocking collider before the player's head must cancel capture.
             for (int i = 0; i < hits; i++)
             {
                 Collider col = obstacleHits[i].collider;
                 if (col == null || col.transform == transform || col.transform.IsChildOf(transform))
                     continue;
-                if (col.transform.IsChildOf(head.root)) return true;
-                return false; // real wall, furniture, or closed door obstructs the attack
+                if (col.transform.IsChildOf(head.root)) continue;
+                if (obstacleHits[i].distance + .05f < distance)
+                    return false;
             }
             return true;
         }
