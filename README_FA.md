@@ -1,56 +1,74 @@
-# LAST SHIFT VR — The Patient 3D (latest source)
+# LastShiftVR — خط تولید حرفه‌ای شخصیت سه‌بعدی The Patient
 
-## درباره مدل شخصیت
-شخصیت **The Patient** دیگر فقط یک Quad دوبعدی نیست. تصویر اصلی ارسال‌شده به‌عنوان تکسچرِ نمای جلوی یک **SkinnedMeshRenderer حجم‌دار** با هفت استخوان استفاده می‌شود. قواره، مو، صورت و لباس در زاویه روبه‌رو از همان تصویر مرجع گرفته شده‌اند. هندسه عمق، پهلو و پشت به‌صورت تقریبی ساخته می‌شوند؛ **از یک تصویر واحد، بازسازی صددرصد یکسان و فتورئالیستی از تمام زوایا ممکن نیست**. این نسخه مدل انسانی حرفه‌ایِ sculpted با لباس شبیه‌سازی‌شده یا FBX آماده نیست، بلکه یک مدل سه‌بعدی تولیدشونده در Unity است.
+**وضعیت:** سورس Unity 6 برای Windows PCVR و Meta Quest Link. سیستم قبلی ساخت مش از عکس، بیلبورد دوبعدی، مش OBJ تکه‌تکه و استخوان/انیمیشن‌های مصنوعی حذف شده‌اند. مدل سه‌بعدی حرفه‌ای نهایی **هنوز در مخزن وجود ندارد**؛ برای فعال شدن دشمن باید FBX یا Prefab واقعی و انیمیشن‌های معتبر اضافه شوند.
 
-### فایل مدل سه‌بعدی آماده در مخزن
-- `Assets/LastShift/Models/ThePatient_ScanVolume.obj` — هندسه حجم‌دارِ مستقل برای بازکردن در نرم‌افزار سه‌بعدی؛ ۵۵۳۸ رأس و حدود ۵۹۹۶ مثلث. **این فایل ثابت است و استخوان/انیمیشن ندارد.**
-- `Assets/LastShift/Models/ThePatient_ScanVolume.mtl` — متریال و ارجاع به بافت ارسالی.
-- `Assets/LastShift/Resources/GhostGirlReference.png` — بافت مرجع اصلی.
-- `Assets/LastShift/GeneratedMeshes/ThePatient_3D_Rigged.asset` — **پس از اجرای سازنده نهایی در Unity** ذخیره می‌شود؛ این نسخه دارای SkinnedMeshRenderer و هفت استخوان است و حرکات از C# اعمال می‌شوند. این فایل از پیش در GitHub وجود ندارد.
+## چه چیزی حذف شد؟
+- `GhostGirlVisual.cs` (مش ساختگی تصویر)
+- `PatientAnimationDriver.cs` (ژست‌های مصنوعی)
+- `ThePatient_ScanVolume.obj` و فایل `.mtl`
+- مراحل تولید مش از پیکسل‌های تصویر و تصویرسازی impostor
 
-### سیستم حرکات
-از طریق `PatientAnimationDriver` حرکات زیر به هفت استخوان اعمال می‌شوند:
-- Idle / نفس‌کشیدن و جابه‌جایی نرم
-- Stare / نگاه خیره و کج‌شدن سر
-- Walk / راه‌رفتن
-- Run / دویدن هنگام نزدیک شدن به بازیکن
-- Frightened / عقب‌کشیدن و لرزش در برخورد نور
-- Scare / ژست ترساندن
-- Attack / حمله و نمایش قبل از Game Over
-- Appear / ظهور
-- Vanish / غیب‌شدن با تغییر شفافیت
-- Stunned / واکنش به نور
+تصویر اصلی `Assets/LastShift/Resources/GhostGirlReference.png` فقط **مرجع ظاهری مدل‌ساز** است و در موتور به‌عنوان بدن دشمن رندر نمی‌شود.
 
-این حرکت‌ها از **کدِ pose blending** ساخته می‌شوند، نه فایل‌های mocap یا انیمیشن واقع‌گرایانه ضبط‌شده. انیمیشن‌ها باید در Unity بازبینی و تنظیم هنری شوند.
+## چه چیزهایی جایگزین شد؟
+- `PatientCharacterRig.cs`: اتصال یک مدل واقعی و SkinnedMeshRenderer به Animator و AI
+- `PatientCharacterImporter.cs`: پیدا کردن و Import فایل FBX/Prefab، اتصال Avatar و ساخت Animator Controller از کلیپ‌های واقعی
+- `Assets/LastShift/Characters/ThePatient/ART_BRIEF.md`: شرح دقیق الزامات بصری، چهره، مو، لباس و ریگ
+- `Characters/ThePatient/Model`: محل فایل مدل واقعی
+- `Characters/ThePatient/Animations`: محل فایل انیمیشن واقعی
 
-## منوی Unity: فقط نسخه نهایی
-زیر منوی `Tools > Last Shift` اکنون باید فقط این گزینه را ببینی:
+### فرمت و نام مورد انتظار
+```text
+Assets/
+  LastShift/
+    Characters/
+      ThePatient/
+        Model/
+          ThePatient.fbx
+        Animations/
+          Idle.anim     (یا FBX دارای کلیپ Idle)
+          Walk.anim
+          Run.anim
+          Attack.anim
+          Stare.anim      (اختیاری)
+          Frightened.anim (اختیاری)
+          Scare.anim      (اختیاری)
+          Appear.anim     (اختیاری)
+          Vanish.anim     (اختیاری)
+          Stunned.anim    (اختیاری)
+```
 
-`Build Final Ward 13 - The Patient 3D`
+**ضروری برای فعال شدن دشمن:** یک مدل دارای `SkinnedMeshRenderer`، Avatar معتبر Humanoid، و کلیپ‌های واقعی **Idle, Walk, Run, Attack**. بقیه حرکت‌ها اختیاری هستند و در صورت نبودشان سیستم به Idle برمی‌گردد.
 
-گزینه‌های Debug / Test / Validate و منوهای نسخه‌های قدیمی از نوار Tools حذف شده‌اند. فایل‌های Helper قبلی هنوز در پروژه وجود دارند تا سازنده نهایی بتواند آنها را فراخوانی کند.
+## تنظیم وارد کردن مدل
+1. FBX واقعی را از Blender یا نرم‌افزار مدل‌سازی خروجی بگیر؛ صورت، مو، لباس، پشت و پهلو باید هندسه واقعی داشته باشند.
+2. در Unity فایل `ThePatient.fbx` را انتخاب کن: `Rig > Animation Type: Humanoid` و `Avatar Definition: Create From This Model`، سپس Apply.
+3. در تب Model، مقیاس را بررسی کن؛ قد تقریبی شخصیت باید واقع‌گرایانه و مطابق طراحی باشد.
+4. در Material، تکسچرهای PBR و متریال‌های URP/Lit را متصل کن.
+5. کلیپ‌های انیمیشن را با نام‌های فوق در `Animations` وارد کن. کلیپ‌ها باید Humanoid و با Avatar همین مدل سازگار باشند؛ Walk/Run را **in-place** و Idle/Walk/Run را looping قرار بده.
+6. فقط منوی نهایی زیر را اجرا کن. Editor یک `ThePatient.controller` می‌سازد و مدل سه‌بعدی را به دشمن متصل می‌کند.
 
-## چطور نسخه جدید را در Unity ببینی
-1. از حالت **Play** خارج شو. اگر قبلاً داخل صحنه دستکاری کرده‌ای، ابتدا از پروژه و صحنه خودت نسخه پشتیبان بگیر؛ سازنده جدید صحنه `Ward13_Prototype.unity` را از ابتدا بازسازی می‌کند.
-2. در GitHub از شاخه `main` روی `Code > Download ZIP` بزن و فایل را Extract کن.
-3. **فقط** پوشه `Assets/LastShift` ریپو را در پروژه Unity فعلی خودت جایگزین کن. `Packages` و `ProjectSettings` قبلی پروژه Unity خودت را حفظ کن.
-4. Unity > `Assets > Refresh`؛ وارد Console شو و مطمئن شو خطای قرمز C# وجود ندارد.
-5. از `Tools > Last Shift > Build Final Ward 13 - The Patient 3D` استفاده کن. این ابزار محیط، سه فیوز، مدارهای نور، هوش مصنوعی، **مش و ریگ 3D** را تولید می‌کند.
-6. مش شخصیت در `Assets/LastShift/GeneratedMeshes/ThePatient_3D_Rigged.asset` ذخیره خواهد شد و مدل همراه استخوان‌ها در صحنه زیر مجموعه `THE WATCHER` قرار می‌گیرد. چون دشمن برای شروع بازی غیرفعال است، آن را برای بازبینی در Scene View موقتاً فعال کن.
-7. تب Game > Play: `WASD` حرکت، موس نگاه، `E` تعامل، `F` چراغ‌قوه.
-8. شخصیت طی رویدادهای بازی ظاهر، محو، تعقیب و حمله خواهد کرد. برای دیدن حرکت Run بهتر است در راهروی اصلی با فاصله مناسب از او حرکت کنی.
+## اجرای نسخه جدید
+1. از Unity Play خارج شو؛ از پروژه و صحنه `Ward13_Prototype.unity` پشتیبان بگیر (سازنده صحنه را بازسازی می‌کند).
+2. از شاخه `main` در https://github.com/tiam-mhd/LastShiftVR آخرین ZIP را دانلود کن.
+3. **فقط** `Assets/LastShift` را در Unity جایگزین کن. پوشه‌های `Packages` و `ProjectSettings` پروژه URP را دست نزن.
+4. فایل‌های قدیمی محلی را که دیگر در مخزن نیستند **دستی حذف کن**:
+   - `Assets/LastShift/Scripts/Runtime/GhostGirlVisual.cs`
+   - `Assets/LastShift/Scripts/Runtime/PatientAnimationDriver.cs`
+   - `Assets/LastShift/Models/ThePatient_ScanVolume.obj` و `.mtl`
+   - در صورت وجود، `Assets/LastShift/GeneratedMeshes/ThePatient_3D_Rigged.asset` (فقط مش قدیمی ساختگی)
+   کپی/Replace ساده ممکن است فایل‌های حذف‌شده را در پروژه Unity نگه دارد؛ بنابراین پاک‌سازی آنها مهم است.
+5. `Assets > Refresh`، سپس Console را برای هر خطای قرمز بررسی کن.
+6. منوی تنها گزینه باقی‌مانده:
 
-## سازگاری Meta Quest PCVR
-- موتور: Unity 6 + Universal Render Pipeline و Unity OpenXR
-- کامپیوتر Windows اجراکننده بازی؛ Quest 2/3/3S از طریق USB Link یا Air Link
-- کنترلر: استیک چپ حرکت، استیک راست چرخش، Trigger راست تعامل و Grip راست چراغ‌قوه
-- قابلیت آزمایشی XR Hands فقط وقتی اجرا می‌شود که داده دست از OpenXR در دسترس باشد؛ **ویندوز EXE با Quest Link ممکن است از دست واقعی پشتیبانی نکند.**
+   `Tools > Last Shift > Build Final Ward 13 - Real Patient FBX`
+7. تا وقتی مدل واقعی و چهار کلیپ ضروری وارد نشده‌اند، بازی محیط، فیوزها و سیستم نور را دارد، اما دشمن غیرفعال است تا **نامرئی Game Over نکند**.
+8. بعد از اضافه کردن مدل و کلیپ‌ها همین گزینه را دوباره اجرا کن تا صحنه به‌روزرسانی شود؛ از Scene View مدل را در `THE WATCHER` ببین.
+9. Desktop: `WASD`, Mouse, `E` تعامل، `F` چراغ‌قوه. PCVR: Meta Quest Link و پروفایل Oculus Touch با OpenXR.
 
-## وضعیت و محدودیت‌ها
-- فایل PNG اصلی در `Assets/LastShift/Resources/GhostGirlReference.png` نگهداری می‌شود.
-- فایل مش `.asset` و صحنه `.unity` هنگام اجرای منوی سازنده **روی سیستم خودت ساخته می‌شوند**؛ قبل از اجرای ابزار در GitHub به شکل ساخته‌شده وجود ندارند.
-- مدل بافت‌دار و هفت‌استخوانی، جایگزین یک مدل 3D artist-grade نیست. ظاهر کامل شخصیت از زاویه‌های بدون مرجع باید با مدل‌سازی دستی بهتر شود.
-- این سورس در این محیط امکان کامپایل واقعی Unity و تست روی هدست نداشته است. بازبینی Console و مشاهده مستقیم در Scene/Game View ضروری است.
-- اگر مش/تکسچر ظاهر نشد، در Unity فایل `GhostGirlReference.png` باید `Read/Write Enabled` داشته باشد؛ سازنده هنگام ساخت تلاش می‌کند آن را فعال کند.
-- با تغییر فیوزهای جمع‌آوری‌شده ابتدا چشمک نور رخ می‌دهد؛ هنگام **نصب** فیوزها در جعبه برق، مدارها یکی‌یکی روشن می‌شوند؛ با زدن کلید برق اصلی کل محیط روشن‌تر می‌شود.
+## وضعیت و محدودیت
+- **هیچ فایل مدل‌ سه‌بعدی حرفه‌ای آمادهٔ FBX و هیچ انیمیشن هنرمندساخته‌شده‌ای در این تغییرات تولید نشده است.** این کار باید به‌صورت مدل‌سازی/ریگ و انیمیشن واقعی تأمین شود.
+- کد تولید `AnimatorController` از کلیپ‌های واقعی طبق API استاندارد Unity نوشته شده، اما کامپایل و اجرای عملی Unity/Quest در این محیط انجام نشده است.
+- اگر FBX داری ولی مدل داخل بازی فعال نمی‌شود، بخش Console را بررسی کن؛ Importer نام کلیپ‌ها و وضعیت Avatar را گزارش می‌دهد.
+- هیچ گزینه Test/DEBUG و هیچ نسخه قدیمی در منوی `Tools > Last Shift` وجود ندارد؛ فقط سازنده نهایی نمایش داده می‌شود.
+
