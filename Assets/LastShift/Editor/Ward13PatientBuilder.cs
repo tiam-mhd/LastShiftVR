@@ -143,8 +143,8 @@ public static class Ward13PatientBuilder
         monster.runSpeed = 1.85f;
         monster.runTriggerDistance = 5f;
         if (!hasRealCharacter)
-            Debug.LogWarning("[LastShift] A real FBX and four required animation clips are needed. " +
-                "The Patient will NOT chase or cause an invisible game over.");
+            Debug.LogError("[LastShift] The Patient model could not be imported as visible 3D geometry. " +
+                "Inspect shabannn.fbx and Unity Console; the ward remains playable without an invisible enemy.");
         
         var director = systems.AddComponent<GhostDirector>();
         director.game = game;
