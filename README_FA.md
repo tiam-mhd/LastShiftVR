@@ -1,3 +1,38 @@
+# رفع خطای CurrentSpeed، منوهای قدیمی و صفحه صورتی — به‌روزرسانی جدید
+
+**Unity تصویر قبلی را هنوز از Scene قدیمی و اسکریپت‌های باقی‌مانده نشان می‌داد.** معمولی کپی‌کردن پوشه جدید روی پوشه قبلی، فایل‌های حذف‌شده در GitHub را پاک نمی‌کند.
+
+### ۱. حتماً Unity را ببند؛ منبع تازه را تمیز جایگزین کن
+1. از پروژه خودت یک نسخه پشتیبان بگیر، مخصوصاً اگر Scene یا Material را شخصاً تغییر داده‌ای.
+2. آخرین نسخه GitHub را با Code > Download ZIP دانلود و Extract کن.
+3. ساده‌ترین روش: از ZIP جدید، فایل `tools/Sync-LastShift.ps1` را با PowerShell اجرا کن؛ مسیر پروژه Unity را در پارامتر `-UnityProject` بده.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File ".\tools\Sync-LastShift.ps1" -UnityProject "C:\PATH\TO\YOUR\UNITY\PROJECT"
+```
+
+**فراموش نکن:** دستور بالا را باید از داخل پوشه استخراج‌شدهٔ GitHub اجرا کنی (یا مسیر کامل فایل اسکریپت را بدهی). داخل `UnityProject` مسیر فولدری را بده که `Assets`, `Packages`, `ProjectSettings` دارد، نه خود `Assets`. اسکریپت پوشه قبلی `Assets/LastShift` را در `LastShift_Backups` بیرون از Assets ذخیره و نسخه جدید را جایگزین می‌کند. کامپایل دوباره در شروع Unity انجام می‌شود.
+
+**روش دستی جایگزین:** Unity را ببند، فولدر `Assets/LastShift` قدیمی را از پروژه **به محل بکاپ خارج از Assets منتقل کن**، سپس `Assets/LastShift` جدید را کپی کن. به جای Merge باید فولدر قبلی کامل از Assets خارج شده باشد. فایل‌های `Packages` و `ProjectSettings` پروژه اصلی دست‌نخورده بمانند.
+
+### ۲. Unity > Console
+Unity را باز کن. خطای قبلی `CS1061: LastShiftMonster.CurrentSpeed` در سورس جدید رفع شده است. اگر خطای قرمز دیگری هست، ابتدا آن را برطرف کن؛ نبودن خطای کامپایل برای ظاهرشدن منو ضروری است.
+
+### ۳. تنها منوی نهایی
+`Tools > Last Shift > Build Final Ward 13 - Real Patient FBX`
+
+منوهای `DEBUG` و `The Patient 3D` قدیمی در **سورس جدید وجود ندارند**. اگر هنوز می‌بینی، کدهای محلی قدیمی درست پاک نشده‌اند یا پروژه دیگری باز است.
+
+### ۴. رنگ صورتی
+باید در `Edit > Project Settings > Graphics` و `Quality` یک **Universal Render Pipeline Asset** فعال باشد؛ و در `Window > Package Manager` پکیج Universal RP نصب باشد. در Unity 6 می‌توانی از `Window > Rendering > Render Pipeline Converter` برای تبدیل متریال‌های Built-in به URP استفاده کنی (پیش از تبدیل، بکاپ بگیر).
+
+سازنده جدید قبل از ساخت، فعال‌بودن URP را بررسی می‌کند؛ متریال‌های قدیمی خراب را هم با Shader `Universal Render Pipeline/Lit` بازیابی می‌کند. **بعد از اصلاح، صحنه را از منوی بالا دوباره بساز**؛ صرفاً بازکردن Scene قبلی کافی نیست. اگر در صحنه قدیمی GeneratedMaterials حذف شده باشد، بازسازی صحنه ارجاعات را تجدید می‌کند.
+
+### ۵. درباره دشمن
+تا وقتی `Assets/LastShift/Characters/ThePatient/Model/ThePatient.fbx` و کلیپ‌های واقعی `Idle, Walk, Run, Attack` همراه Humanoid Avatar معتبر وجود نداشته باشند، سیستم عمداً دشمن نامرئی را غیرفعال نگه می‌دارد. وجود تصویر مرجع به‌تنهایی مدل 3D محسوب نمی‌شود.
+
+---
+
 # LastShiftVR — خط تولید حرفه‌ای شخصیت سه‌بعدی The Patient
 
 **وضعیت:** سورس Unity 6 برای Windows PCVR و Meta Quest Link. سیستم قبلی ساخت مش از عکس، بیلبورد دوبعدی، مش OBJ تکه‌تکه و استخوان/انیمیشن‌های مصنوعی حذف شده‌اند. مدل سه‌بعدی حرفه‌ای نهایی **هنوز در مخزن وجود ندارد**؛ برای فعال شدن دشمن باید FBX یا Prefab واقعی و انیمیشن‌های معتبر اضافه شوند.
