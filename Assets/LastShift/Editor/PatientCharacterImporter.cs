@@ -89,7 +89,13 @@ public static class PatientCharacterImporter
             foreach (var audio in instance.GetComponentsInChildren<AudioListener>(true)) audio.enabled = false;
             foreach (var audio in instance.GetComponentsInChildren<AudioSource>(true)) audio.enabled = false;
             foreach (var particles in instance.GetComponentsInChildren<ParticleSystem>(true))
-                particles.gameObject.SetActive(false);
+            {
+                // Do not deactivate a character armature just because an FBX
+                // attaches a particle emitter to it.
+                particles.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+                var particleRenderer = particles.GetComponent<ParticleSystemRenderer>();
+                if (particleRenderer != null) particleRenderer.enabled = false;
+            }
 
             var meshes = character.GetComponentsInChildren<Renderer>(true)
                 .Where(r => r is SkinnedMeshRenderer || (r is MeshRenderer &&
