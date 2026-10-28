@@ -147,6 +147,7 @@ public static class Ward13AtmosphereBuilder
         // Fuses now rest on lit wall-side stations rather than float in an empty corridor.
         foreach (var fuse in root.GetComponentsInChildren<LastShiftFuse>(true))
         {
+            fuse.gameObject.AddComponent<FuseBeacon>();
             var p = fuse.transform.position;
             Cube("Fuse pedestal", new Vector3(p.x, .61f, p.z),
                 new Vector3(.62f, .88f, .58f), midnight, root, true);
