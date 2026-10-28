@@ -10,7 +10,7 @@ namespace LastShift
         public LastShiftMonster monster;
         public PatientCharacterRig rig;
         public Light[] crisisLights;
-        public float firstSightingSeconds = 5f;
+        public float firstSightingSeconds = 5.8f;
         public float openingDelay = 2.5f;
         public bool CharacterReady => monster != null && rig != null && rig.IsReady;
 
@@ -40,7 +40,7 @@ namespace LastShift
             if (game == null || game.HasEnded || monster == null) return;
             if (!CharacterReady)
             {
-                Debug.LogWarning("[LastShift] Ghost event skipped: real model / animation clips not installed.");
+                Debug.LogWarning("[LastShift] Ghost encounter skipped: real FBX mesh not configured.");
                 return;
             }
 
@@ -60,10 +60,10 @@ namespace LastShift
         private IEnumerator FirstSighting()
         {
             if (!CharacterReady) yield break;
-            float z = -2.25f;
-            if (Camera.main != null)
-                z = Mathf.Clamp(Camera.main.transform.position.z + 6.5f, -2.25f, 11.5f);
-            monster.transform.position = new Vector3(0f, 0f, z);
+            var cam = Camera.main;
+            if (cam == null) yield break;
+            monster.transform.position = WardSpatial.SafeCorridorSpawn(
+                cam.transform.position, cam.transform.forward);
             monster.gameObject.SetActive(true);
             monster.enabled = false;
             rig.SetVisible(true);
@@ -89,13 +89,29 @@ namespace LastShift
             if (!CharacterReady) return;
             hunting = true;
             monster.enabled = true;
-            monster.transform.position = new Vector3(0f, 0f, 14f);
+            if (Camera.main == null) return;
+            var cam = Camera.main.transform;
+            monster.transform.position = WardSpatial.SafeCorridorSpawn(
+                cam.position, cam.forward);
             monster.gameObject.SetActive(true);
+            monster.enabled = false;
             rig.SetVisible(true);
-            monster.Wake(game, game.flashlight);
-            rig.PlayAction(PatientMotion.Scare, 1f);
+            rig.PlayAction(PatientMotion.Stare, 1.7f);
             PlayAtMonster(stinger);
             nextBreath = Time.time + 2f;
+            StartCoroutine(BeginPursuit());
+        }
+
+        private IEnumerator BeginPursuit()
+        {
+            // Give the player a readable, stationary sighting before the chase,
+            // instead of spawning an enemy out of sight at a fixed far-end position.
+            yield return new WaitForSeconds(1.6f);
+            if (!CharacterReady || game == null || game.HasEnded) yield break;
+            rig.SetVisible(true);
+            monster.enabled = true;
+            monster.Wake(game, game.flashlight);
+            rig.PlayAction(PatientMotion.Scare, .9f);
         }
 
         private void Update()
