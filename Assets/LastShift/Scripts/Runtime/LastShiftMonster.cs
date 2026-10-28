@@ -24,6 +24,7 @@ namespace LastShift
         private bool hunting;
         private bool attacking;
         private float currentSpeed;
+        public float CurrentSpeed => currentSpeed; // Animator reads chase velocity; do not expose mutable state.
         private Coroutine captureRoutine;
 
         public void Wake(LastShiftGame owner, FlashlightBehaviour source)
