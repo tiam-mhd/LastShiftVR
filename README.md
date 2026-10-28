@@ -1,3 +1,22 @@
+# Ghost Girl Animated — integration update
+
+The repository contains the actual **`shabannn.fbx` (~21.9 MB)** at
+`Assets/LastShift/Characters/ThePatient/Model/shabannn.fbx`.
+The final Unity scene builder now auto-detects that file without renaming it, instantiates its actual renderable 3D geometry, fits and grounds the model, and converts incompatible materials to URP/Lit while preserving any imported textures.
+
+**Automatic animation mapping:** The importer queries actual `AnimationClip` subassets of this FBX and any optional animation files, maps matching names to the ten game states, and logs exact mapping/fallbacks in Unity Console. The actual embedded clip count and names were not independently inspectable from this environment; the Unity import report is authoritative.
+
+**Visibility safety:** The real FBX can be visible and chase even if fewer than four clips exist. If animation data is absent, there is only a modest whole-body fallback; the game does not claim artist-quality skeletal walk/run/attack without the necessary clips. Environmental horror remains enabled.
+
+**Scene rebuild is required** after copying the updated `Assets/LastShift` folder into the Unity project. In Unity use only:
+`Tools > Last Shift > Build Final Ward 13 - Real Patient FBX`.
+
+Creator attribution: **Ghost Girl Animated by Shaban Hafizsalim (shabaninteractive)**,
+[Sketchfab model](https://sketchfab.com/3d-models/ghost-girl-animated-1091b3ee172f4951aaeafa2581f9de1d), CC BY 4.0.
+See `Assets/LastShift/Characters/ThePatient/ATTRIBUTION.md`. Keep credit with distributed builds.
+
+---
+
 # LastShiftVR — Real 3D Character Integration (Windows PCVR)
 
 Unity 6 + URP + OpenXR horror game prototype for Windows. Play through Meta Quest Link with Quest 2 / 3 / 3S, using controllers; keyboard/mouse desktop preview also works.
