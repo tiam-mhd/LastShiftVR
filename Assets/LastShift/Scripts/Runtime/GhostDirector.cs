@@ -20,6 +20,7 @@ namespace LastShift
         private AudioClip whisper;
         private AudioClip stinger;
         private bool hunting;
+        private bool witnessed;
 
         private void Awake()
         {
@@ -46,8 +47,10 @@ namespace LastShift
 
             if (count == 1)
             {
-                if (sighting != null) StopCoroutine(sighting);
-                sighting = StartCoroutine(FirstSighting());
+                // Don't restart the same sighting: doing so used to teleport the
+                // ghost unpredictably while the player was watching.
+                if (!witnessed && sighting == null)
+                    sighting = StartCoroutine(FirstSighting());
             }
             else if (count == 2)
             {
@@ -62,37 +65,53 @@ namespace LastShift
             if (!CharacterReady) yield break;
             var cam = Camera.main;
             if (cam == null) yield break;
+            witnessed = true;
             monster.transform.position = WardSpatial.SafeCorridorSpawn(
                 cam.transform.position, cam.transform.forward);
             monster.gameObject.SetActive(true);
             monster.enabled = false;
             rig.SetVisible(true);
-            rig.PlayAction(PatientMotion.Appear, firstSightingSeconds * .45f);
+            rig.PlayAction(PatientMotion.Stare, 1.8f);
             PlayAtMonster(stinger);
 
-            yield return new WaitForSeconds(Mathf.Max(.15f, firstSightingSeconds - .9f));
-            if (CharacterReady)
-                rig.PlayAction(PatientMotion.Vanish, .8f);
-            yield return new WaitForSeconds(.85f);
-
-            if (!hunting && monster != null)
+            // Do not vanish in direct view. Wait for a real player look-away.
+            float elapsed = 0f;
+            while (!hunting && game != null && !game.HasEnded)
+            {
+                elapsed += Time.deltaTime;
+                if (elapsed >= firstSightingSeconds && !IsGhostInView())
+                    break;
+                yield return null;
+            }
+            if (!hunting && monster != null && game != null && !game.HasEnded)
             {
                 rig.SetVisible(false);
                 monster.gameObject.SetActive(false);
-                monster.enabled = true;
             }
             sighting = null;
+        }
+
+        private bool IsGhostInView()
+        {
+            var cam = Camera.main;
+            if (cam == null || monster == null) return false;
+            Vector3 delta = monster.transform.position + Vector3.up * 1.25f -
+                            cam.transform.position;
+            return delta.sqrMagnitude < 180f &&
+                   Vector3.Dot(cam.transform.forward, delta.normalized) > .28f;
         }
 
         private void StartHunt()
         {
             if (!CharacterReady) return;
             hunting = true;
-            monster.enabled = true;
             if (Camera.main == null) return;
             var cam = Camera.main.transform;
-            monster.transform.position = WardSpatial.SafeCorridorSpawn(
-                cam.position, cam.forward);
+            // Reuse the existing witnessed spawn; teleport only if truly hidden.
+            bool wasVisible = monster.gameObject.activeSelf && IsGhostInView();
+            if (!wasVisible)
+                monster.transform.position = WardSpatial.SafeCorridorSpawn(
+                    cam.position, cam.forward);
             monster.gameObject.SetActive(true);
             monster.enabled = false;
             rig.SetVisible(true);
