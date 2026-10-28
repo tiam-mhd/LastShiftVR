@@ -35,6 +35,9 @@ namespace LastShift
         private bool created;
         private float timeOffset;
 
+        public Mesh GeneratedMesh => generatedMesh;
+        public SkinnedMeshRenderer ModelRenderer => skin;
+
         private const int Columns = 58;
         private const int Rows = 104;
 
@@ -43,6 +46,7 @@ namespace LastShift
         public void EnsureVisual()
         {
             if (created) return;
+            if (TryUseSavedRig()) return;
             created = true;
             timeOffset = UnityEngine.Random.Range(0f, 5f);
 
@@ -88,7 +92,7 @@ namespace LastShift
 
             Shader shader = Shader.Find("Universal Render Pipeline/Unlit");
             if (shader == null) shader = Shader.Find("Unlit/Transparent");
-            if (preparedMaterial != null) instanceMaterial = new Material(preparedMaterial);
+            if (preparedMaterial != null) instanceMaterial = Application.isPlaying ? new Material(preparedMaterial) : preparedMaterial;
             else if (shader != null) instanceMaterial = new Material(shader);
             if (instanceMaterial == null)
             {
@@ -120,6 +124,42 @@ namespace LastShift
             driver.visual = this;
             Debug.Log("[LastShift] TRUE 3D skinned Patient built: " + generatedMesh.vertexCount +
                 " vertices, 7 bones, original reference texture " + source.width + "x" + source.height + ".");
+        }
+
+        private bool TryUseSavedRig()
+        {
+            var existing = transform.Find("THE PATIENT | 3D skinned model");
+            if (existing == null) return false;
+            var found = existing.GetComponent<SkinnedMeshRenderer>();
+            if (found == null || found.sharedMesh == null) return false;
+            model = existing;
+            skin = found;
+            Transform[] savedBones = skin.bones;
+            foreach (var bone in savedBones)
+            {
+                if (bone == null) continue;
+                if (bone.name.StartsWith("01 /")) hipsBone = bone;
+                else if (bone.name.StartsWith("02 /")) chestBone = bone;
+                else if (bone.name.StartsWith("03 /")) headBone = bone;
+                else if (bone.name.StartsWith("04 /")) leftArmBone = bone;
+                else if (bone.name.StartsWith("05 /")) rightArmBone = bone;
+                else if (bone.name.StartsWith("06 /")) leftLegBone = bone;
+                else if (bone.name.StartsWith("07 /")) rightLegBone = bone;
+            }
+            created = true;
+            timeOffset = UnityEngine.Random.Range(0f, 5f);
+            if (Application.isPlaying && skin.sharedMaterial != null)
+            {
+                instanceMaterial = new Material(skin.sharedMaterial);
+                skin.sharedMaterial = instanceMaterial;
+            }
+            else instanceMaterial = skin.sharedMaterial;
+            SetOpacity(opacity);
+            var driver = gameObject.GetComponent<PatientAnimationDriver>();
+            if (driver == null) driver = gameObject.AddComponent<PatientAnimationDriver>();
+            driver.visual = this;
+            Debug.Log("[LastShift] 3D Patient rig loaded from generated Unity mesh asset.");
+            return true;
         }
 
         private Transform Bone(string label, Transform parent, Vector3 local)
@@ -312,8 +352,10 @@ namespace LastShift
 
         private void OnDestroy()
         {
-            if (instanceMaterial != null) Destroy(instanceMaterial);
-            if (generatedMesh != null) Destroy(generatedMesh);
+            if (Application.isPlaying && instanceMaterial != null && instanceMaterial != preparedMaterial)
+                Destroy(instanceMaterial);
+            // The editor-baked mesh is a persistent Unity asset; never destroy it here.
+            if (Application.isPlaying && generatedMesh != null) Destroy(generatedMesh);
         }
     }
 }
