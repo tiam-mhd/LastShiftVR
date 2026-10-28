@@ -20,7 +20,7 @@ namespace LastShift
         private FlashlightBehaviour torch;
         private Transform head;
         private PatientPathChase path;
-        private GhostGirlVisual visual;
+        private PatientCharacterRig rig;
         private bool hunting;
         private bool attacking;
         private float currentSpeed;
@@ -32,14 +32,21 @@ namespace LastShift
             torch = source;
             if (Camera.main != null) head = Camera.main.transform;
             path = GetComponent<PatientPathChase>();
-            visual = GetComponent<GhostGirlVisual>();
+            rig = GetComponent<PatientCharacterRig>();
+            if (rig == null || !rig.IsReady)
+            {
+                Debug.LogWarning("[LastShift] Chase cancelled: real animated 3D patient not installed.");
+                hunting = false;
+                enabled = false;
+                return;
+            }
             currentSpeed = .3f;
             attacking = false;
             IsStunned = false;
             hunting = true;
             gameObject.SetActive(true);
             enabled = true;
-            if (visual != null) { visual.EnsureVisual(); visual.SetOpacity(1f); }
+            rig.SetVisible(true);
         }
 
         public void StopChasing()
@@ -111,10 +118,9 @@ namespace LastShift
         {
             attacking = true;
             hunting = false;
-            var animationDriver = GetComponent<PatientAnimationDriver>();
-            if (animationDriver != null) animationDriver.Play(PatientAction.Attack, revealSeconds);
-            if (visual == null) visual = GetComponent<GhostGirlVisual>();
-            if (visual != null) { visual.EnsureVisual(); visual.SetOpacity(1f); }
+            if (rig == null || !rig.IsReady) yield break;
+            rig.SetVisible(true);
+            rig.PlayAction(PatientMotion.Attack, revealSeconds);
 
             // Do not move the VR camera: the ghost steps into the player's view instead.
             // This prevents a game-over message from covering an invisible offscreen enemy.
