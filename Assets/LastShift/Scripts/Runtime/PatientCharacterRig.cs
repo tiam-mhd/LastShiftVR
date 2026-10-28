@@ -78,6 +78,21 @@ namespace LastShift
                 : Array.Empty<Renderer>();
         }
 
+        public bool HasVisibleMesh()
+        {
+            if (!HasModel || characterRoot == null || !characterRoot.activeInHierarchy)
+                return false;
+            // A renderer on an inactive Sky object does not count.
+            foreach (Renderer r in renderers)
+            {
+                if (r != null && r.enabled && r.gameObject.activeInHierarchy &&
+                    ((r is SkinnedMeshRenderer s && s.sharedMesh != null) ||
+                     (r is MeshRenderer mr && mr.GetComponent<MeshFilter>() != null)))
+                    return true;
+            }
+            return false;
+        }
+
         public void SetVisible(bool visible)
         {
             if (!HasModel) return;
