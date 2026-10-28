@@ -9,335 +9,366 @@ using UnityEngine;
 using LastShift;
 
 /// <summary>
-/// Imports the artist-authored Sketchfab FBX already committed to the repository.
-/// Detects any model filename (including shabannn.fbx) and records the actual
-/// imported clips, so state names do not have to match the original FBX takes.
+/// Imports ONLY the actual Zombie_Walk/Ghost character from shabannn.fbx.
+/// The Sketchfab FBX also contains a Cinema4D sky, cameras, gravity and lights.
+/// None of those cinematic elements belong in the hospital scene.
 /// </summary>
 public static class PatientCharacterImporter
 {
     public const string Folder = "Assets/LastShift/Characters/ThePatient";
     public const string ModelFolder = Folder + "/Model";
+    public const string TextureFolder = Folder + "/Textures";
     public const string AnimFolder = Folder + "/Animations";
     public const string Generated = Folder + "/Generated";
     public const string ControllerPath = Generated + "/ThePatient.controller";
 
-    private static readonly PatientMotion[] MotionOrder = {
-        PatientMotion.Idle, PatientMotion.Walk, PatientMotion.Run, PatientMotion.Stare,
-        PatientMotion.Frightened, PatientMotion.Scare, PatientMotion.Attack,
-        PatientMotion.Appear, PatientMotion.Vanish, PatientMotion.Stunned
+    private static readonly PatientMotion[] Motions = (PatientMotion[])Enum.GetValues(typeof(PatientMotion));
+    private static readonly Dictionary<PatientMotion, string[]> Aliases =
+        new Dictionary<PatientMotion, string[]>
+    {
+        {PatientMotion.Idle, new[] {"idle","breath","stand","default"}},
+        {PatientMotion.Walk, new[] {"walk","creep","locomotion","move","zombie"}},
+        {PatientMotion.Run, new[] {"run","sprint","chase"}},
+        {PatientMotion.Stare, new[] {"stare","look","watch"}},
+        {PatientMotion.Frightened, new[] {"fear","fright","recoil","flinch","hit"}},
+        {PatientMotion.Scare, new[] {"scare","scream","roar","jump"}},
+        {PatientMotion.Attack, new[] {"attack","strike","grab","lunge","bite"}},
+        {PatientMotion.Appear, new[] {"appear","spawn","rise"}},
+        {PatientMotion.Vanish, new[] {"vanish","disappear","fade"}},
+        {PatientMotion.Stunned, new[] {"stun","hit","recoil"}}
     };
 
     public static bool AttachRealModel(LastShiftMonster monster)
     {
         if (monster == null) return false;
-        // The prototype generator leaves the monster inactive. Temporarily enable
-        // it so FBX Renderer.bounds can be measured for correct scale/grounding.
-        bool initiallyActive = monster.gameObject.activeSelf;
+        var rig = monster.GetComponent<PatientCharacterRig>();
+        if (rig == null) rig = monster.gameObject.AddComponent<PatientCharacterRig>();
+        var filename = PickModel();
+        if (string.IsNullOrEmpty(filename))
+        {
+            Debug.LogError("[LastShift / FBX] shabannn.fbx missing under " + ModelFolder);
+            return false;
+        }
+
+        var importer = AssetImporter.GetAtPath(filename) as ModelImporter;
+        if (importer != null &&
+            (importer.animationType == ModelImporterAnimationType.Legacy ||
+             importer.animationType == ModelImporterAnimationType.None || !importer.importAnimation))
+        {
+            importer.animationType = ModelImporterAnimationType.Generic;
+            importer.importAnimation = true;
+            importer.SaveAndReimport();
+        }
+
+        var source = AssetDatabase.LoadAssetAtPath<GameObject>(filename);
+        if (source == null) return false;
+        bool wasActive = monster.gameObject.activeSelf;
         monster.gameObject.SetActive(true);
         try
         {
-        var rig = monster.GetComponent<PatientCharacterRig>();
-        if (rig == null) rig = monster.gameObject.AddComponent<PatientCharacterRig>();
+            var instance = PrefabUtility.InstantiatePrefab(source, monster.transform) as GameObject;
+            if (instance == null) return false;
+            instance.name = "The Patient - Ghost Girl Animated (real FBX)";
+            instance.transform.localPosition = Vector3.zero;
+            instance.transform.localRotation = Quaternion.identity;
 
-        string modelPath = PickModel();
-        if (string.IsNullOrEmpty(modelPath))
-        {
-            Debug.LogError("[LastShift] No FBX/prefab under " + ModelFolder +
-                ". Expected shabannn.fbx or another authentic 3D model.");
-            return false;
-        }
-
-        var modelImporter = AssetImporter.GetAtPath(modelPath) as ModelImporter;
-        if (modelImporter != null)
-        {
-            // Unity can silently import an FBX in Legacy/None mode, leaving no
-            // Animator-compatible clips. Preserve existing Humanoid or Generic rigs.
-            if (modelImporter.animationType == ModelImporterAnimationType.Legacy ||
-                modelImporter.animationType == ModelImporterAnimationType.None ||
-                !modelImporter.importAnimation)
+            // Vital: imported Sky is an enormous background mesh from Cinema4D.
+            // It was responsible for the beige/blue gradient obscuring the hospital.
+            var character = FindCharacterBranch(instance.transform);
+            if (character == null)
             {
-                modelImporter.animationType = ModelImporterAnimationType.Generic;
-                modelImporter.importAnimation = true;
-                modelImporter.SaveAndReimport();
-                Debug.Log("[LastShift / FBX] Set animation import to Generic for " + modelPath);
+                Debug.LogError("[LastShift / FBX] No actual zombie_Walk character branch. " +
+                    "Refusing to render the imported Cinema4D sky as the enemy.");
+                UnityEngine.Object.DestroyImmediate(instance);
+                return false;
             }
-        }
+            DisableEverythingExceptBranch(instance.transform, character);
 
-        var source = AssetDatabase.LoadAssetAtPath<GameObject>(modelPath);
-        if (source == null)
-        {
-            Debug.LogError("[LastShift] AssetDatabase failed to load " + modelPath);
-            return false;
-        }
+            foreach (var camera in instance.GetComponentsInChildren<Camera>(true)) camera.enabled = false;
+            foreach (var light in instance.GetComponentsInChildren<Light>(true)) light.enabled = false;
+            foreach (var audio in instance.GetComponentsInChildren<AudioListener>(true)) audio.enabled = false;
+            foreach (var audio in instance.GetComponentsInChildren<AudioSource>(true)) audio.enabled = false;
+            foreach (var particles in instance.GetComponentsInChildren<ParticleSystem>(true))
+                particles.gameObject.SetActive(false);
 
-        GameObject instance = PrefabUtility.InstantiatePrefab(source, monster.transform) as GameObject;
-        if (instance == null) return false;
-        instance.name = "The Patient - Ghost Girl Animated (real FBX)";
-        instance.transform.localPosition = Vector3.zero;
-        instance.transform.localRotation = Quaternion.identity;
-        instance.SetActive(true);
+            var meshes = character.GetComponentsInChildren<Renderer>(true)
+                .Where(r => r is SkinnedMeshRenderer || (r is MeshRenderer &&
+                         r.GetComponent<MeshFilter>() != null)).ToArray();
+            if (meshes.Length == 0)
+            {
+                Debug.LogError("[LastShift / FBX] Selected zombie_Walk branch has no 3D mesh.");
+                UnityEngine.Object.DestroyImmediate(instance);
+                return false;
+            }
 
-        var meshes = instance.GetComponentsInChildren<Renderer>(true)
-            .Where(r => (r is SkinnedMeshRenderer sk && sk.sharedMesh != null) ||
-                        (r is MeshRenderer mr && mr.GetComponent<MeshFilter>() != null &&
-                         mr.GetComponent<MeshFilter>().sharedMesh != null))
-            .ToArray();
-        if (meshes.Length == 0)
-        {
-            Debug.LogError("[LastShift] Model has no renderable 3D meshes: " + modelPath);
-            UnityEngine.Object.DestroyImmediate(instance);
-            return false;
-        }
+            instance.SetActive(true);
+            FitAndGround(instance, meshes, 1.72f);
+            BindDdsTextures(meshes);
+            var animator = instance.GetComponent<Animator>();
+            if (animator == null) animator = instance.AddComponent<Animator>();
+            animator.applyRootMotion = false;
+            animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
 
-        FitAndGround(instance, meshes, 1.72f);
-        EnsureUrpMaterials(meshes);
+            var clips = FindClips(filename);
+            int nativeMask;
+            string report;
+            var map = MapClips(clips, out nativeMask, out report);
+            animator.runtimeAnimatorController = BuildController(map);
+            rig.Configure(instance, animator, nativeMask);
+            rig.SetVisible(true);
 
-        var animator = instance.GetComponent<Animator>();
-        if (animator == null) animator = instance.AddComponent<Animator>();
-        animator.applyRootMotion = false;
-        animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
-        // If imported as Generic, preserve the Generic rig and original animation hierarchy.
+            Debug.Log("[LastShift / FBX] Character branch: " + character.name +
+                " | character renderers: " + meshes.Length +
+                " | removed cinematic background/cameras/lights: YES" +
+                " | clips: " + clips.Count + "\n" + report);
 
-        var actualClips = FindRealClips(modelPath);
-        var mapping = MapMotionClips(actualClips, out int nativeMask, out string report);
-        var controller = BuildController(mapping);
-        if (controller != null) animator.runtimeAnimatorController = controller;
-
-        rig.Configure(instance, animator, nativeMask);
-        rig.SetVisible(true);
-
-        string rigType = "Prefab";
-        var imported = AssetImporter.GetAtPath(modelPath) as ModelImporter;
-        if (imported != null) rigType = imported.animationType.ToString();
-        Debug.Log("[LastShift / Model] Imported " + modelPath +
-                  " | real mesh renderers: " + meshes.Length +
-                  " | importer rig: " + rigType +
-                  " | original AnimationClips: " + actualClips.Count +
-                  "\n" + report);
-
-        if (actualClips.Count == 0)
-            Debug.LogWarning("[LastShift / Anim] No imported motion clips were found inside shabannn.fbx " +
-                "or Animations folder. The actual model WILL still appear and pursue the player, " +
-                "but artist-authored walking/running/attack motions require compatible clips.");
-
-        if (!rig.IsReady)
-        {
-            Debug.LogError("[LastShift] The FBX has renderable meshes but the real character rig was not bound.");
-            return false;
-        }
-
-        Debug.Log("[LastShift] The Patient is VISIBLE and READY for Ward 13: " + instance.name);
-        return true;
+            if (!rig.IsReady)
+            {
+                Debug.LogError("[LastShift / FBX] Imported geometry was not usable.");
+                return false;
+            }
+            return true;
         }
         finally
         {
-            monster.gameObject.SetActive(initiallyActive);
+            monster.gameObject.SetActive(wasActive);
         }
     }
 
     private static string PickModel()
     {
-        string[] priority = {
-            ModelFolder + "/shabannn.fbx",
-            ModelFolder + "/ThePatient.fbx",
-            ModelFolder + "/ThePatient.prefab"
-        };
-        foreach (string p in priority)
-            if (AssetDatabase.LoadAssetAtPath<GameObject>(p) != null) return p;
-        var all = AssetDatabase.FindAssets("t:GameObject", new[] { ModelFolder })
-            .Select(AssetDatabase.GUIDToAssetPath)
-            .Where(p => p.EndsWith(".fbx", StringComparison.OrdinalIgnoreCase) ||
-                        p.EndsWith(".prefab", StringComparison.OrdinalIgnoreCase))
-            .OrderBy(p => p, StringComparer.OrdinalIgnoreCase).ToArray();
-        if (all.Length > 1)
-            Debug.LogWarning("[LastShift] Multiple models found; using " + all[0]);
-        return all.Length == 0 ? null : all[0];
+        var preferred = ModelFolder + "/shabannn.fbx";
+        if (AssetDatabase.LoadAssetAtPath<GameObject>(preferred) != null) return preferred;
+        foreach (var guid in AssetDatabase.FindAssets("t:Model", new[] { ModelFolder }))
+        {
+            var p = AssetDatabase.GUIDToAssetPath(guid);
+            if (p.EndsWith(".fbx", StringComparison.OrdinalIgnoreCase)) return p;
+        }
+        return null;
     }
 
-    private static void EnsureUrpMaterials(Renderer[] meshes)
+    private static Transform FindCharacterBranch(Transform root)
+    {
+        var transforms = root.GetComponentsInChildren<Transform>(true);
+        foreach (var t in transforms)
+            if (t != root && t.name.Equals("zombie_Walk", StringComparison.OrdinalIgnoreCase))
+                return t;
+        foreach (var t in transforms)
+            if (t != root && (t.name.IndexOf("zombie", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                              t.name.IndexOf("ghost", StringComparison.OrdinalIgnoreCase) >= 0) &&
+                t.GetComponentsInChildren<SkinnedMeshRenderer>(true).Length > 0)
+                return t;
+        // No guess based on the sky mesh's renderer size: refuse the unsafe import.
+        return null;
+    }
+
+    private static void DisableEverythingExceptBranch(Transform parent, Transform character)
+    {
+        for (int i = 0; i < parent.childCount; i++)
+        {
+            Transform child = parent.GetChild(i);
+            if (child == character) { child.gameObject.SetActive(true); continue; }
+            if (character.IsChildOf(child))
+            {
+                child.gameObject.SetActive(true);
+                DisableEverythingExceptBranch(child, character);
+            }
+            else child.gameObject.SetActive(false);
+        }
+        // Renderers and scripts on ancestors of character may include sky geometry.
+        for (var current = character.parent; current != null; current = current.parent)
+        {
+            foreach (var r in current.GetComponents<Renderer>()) r.enabled = false;
+            foreach (var l in current.GetComponents<Light>()) l.enabled = false;
+        }
+    }
+
+    private static void FitAndGround(GameObject instance, Renderer[] renderers, float height)
+    {
+        Bounds bounds = renderers[0].bounds;
+        for (int i = 1; i < renderers.Length; i++) bounds.Encapsulate(renderers[i].bounds);
+        if (bounds.size.y < .0001f || bounds.size.y > 10000f) return;
+        float ratio = Mathf.Clamp(height / bounds.size.y, .0001f, 500f);
+        instance.transform.localScale *= ratio;
+        bounds = renderers[0].bounds;
+        for (int i = 1; i < renderers.Length; i++) bounds.Encapsulate(renderers[i].bounds);
+        instance.transform.position +=
+            new Vector3(-bounds.center.x, -bounds.min.y, -bounds.center.z);
+        Debug.Log("[LastShift / FBX] Grounded character at 0 and scaled to 1.72m. Ratio: " + ratio);
+    }
+
+    private static void BindDdsTextures(Renderer[] renderers)
     {
         if (!AssetDatabase.IsValidFolder(Generated))
             AssetDatabase.CreateFolder(Folder, "Generated");
 
-        int slot = 0;
-        foreach (Renderer renderer in meshes)
+        var sets = new [] {
+            new [] {"ghost_head_d1.dds","ghost_head_n1.dds","ghost_head_s1.dds"},
+            new [] {"ghost_dress_d.dds","ghost_dress_n.dds","ghost_dress_s.dds"},
+            new [] {"hair_02_d.dds","hair_02_n.dds","hair_02_s.dds"}
+        };
+        var groupLabels = new [] {"Head", "Dress", "Hair"};
+        Texture2D[][] maps = new Texture2D[3][];
+        for (int group = 0; group < 3; group++)
         {
-            Material[] materials = renderer.sharedMaterials;
-            bool modified = false;
-            for (int i = 0; i < materials.Length; i++, slot++)
+            maps[group] = new Texture2D[3];
+            for (int map = 0; map < 3; map++)
             {
-                Material original = materials[i];
-                if (original == null)
+                string path = TextureFolder + "/" + sets[group][map];
+                if (map == 1)
                 {
-                    Debug.LogWarning("[LastShift / Materials] Null material on " + renderer.name +
-                        ". A neutral URP material will be used.");
+                    var importer = AssetImporter.GetAtPath(path) as TextureImporter;
+                    if (importer != null && importer.textureType != TextureImporterType.NormalMap)
+                    {
+                        importer.textureType = TextureImporterType.NormalMap;
+                        importer.SaveAndReimport();
+                    }
                 }
-                else if (original.shader != null && original.shader.isSupported &&
-                         original.shader.name.StartsWith("Universal Render Pipeline/",
-                             StringComparison.OrdinalIgnoreCase))
-                    continue;
-
-                // Imported FBX materials can use Standard or unavailable external shaders.
-                // Convert only the instance, preserving the FBX and source textures.
-                string dst = Generated + "/Patient_URP_Material_" + slot + ".mat";
-                Material conversion = AssetDatabase.LoadAssetAtPath<Material>(dst);
-                if (conversion == null)
-                {
-                    conversion = new Material(Ward13UrpMaterialTools.LitShader());
-                    conversion.name = "Patient - URP material " + slot;
-                    AssetDatabase.CreateAsset(conversion, dst);
-                }
-                else conversion.shader = Ward13UrpMaterialTools.LitShader();
-
-                Texture texture = null;
-                Color tint = Color.white;
-                if (original != null)
-                {
-                    if (original.HasProperty("_BaseMap"))
-                        texture = original.GetTexture("_BaseMap");
-                    if (texture == null && original.HasProperty("_MainTex"))
-                        texture = original.GetTexture("_MainTex");
-                    if (original.HasProperty("_BaseColor"))
-                        tint = original.GetColor("_BaseColor");
-                    else if (original.HasProperty("_Color"))
-                        tint = original.GetColor("_Color");
-                }
-                if (conversion.HasProperty("_BaseMap"))
-                    conversion.SetTexture("_BaseMap", texture);
-                if (conversion.HasProperty("_BaseColor"))
-                    conversion.SetColor("_BaseColor", tint);
-                EditorUtility.SetDirty(conversion);
-                materials[i] = conversion;
-                modified = true;
-                if (texture == null)
-                    Debug.LogWarning("[LastShift / Materials] No diffuse texture was found for " +
-                        renderer.name + " / slot " + i + ". The actual mesh will still render, " +
-                        "but its FBX texture may need to be extracted or re-linked.");
+                maps[group][map] = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+                if (maps[group][map] == null)
+                    Debug.LogWarning("[LastShift / DDS] Texture unavailable: " + path);
             }
-            if (modified) renderer.sharedMaterials = materials;
         }
-    }
 
-    private static void FitAndGround(GameObject instance, Renderer[] meshes, float targetHeight)
-    {
-        // Fit the actual mesh to human scale and place the lowest visible vertex at floor level.
-        Bounds bounds = meshes[0].bounds;
-        foreach (var r in meshes) bounds.Encapsulate(r.bounds);
-        if (bounds.size.y < .001f || bounds.size.y > 10000f)
+        int materialOrdinal = 0;
+        foreach (Renderer renderer in renderers)
         {
-            Debug.LogWarning("[LastShift] FBX has unusual bounds; adjust model Transform manually.");
-            return;
-        }
+            var originals = renderer.sharedMaterials;
+            var mapped = new Material[originals.Length];
+            for (int slot = 0; slot < originals.Length; slot++, materialOrdinal++)
+            {
+                var original = originals[slot];
+                string descriptor = (renderer.name + " " + (original != null ? original.name : "") +
+                    " " + (original != null && original.mainTexture != null ? original.mainTexture.name : "")).ToLowerInvariant();
+                int category = -1;
+                if (descriptor.Contains("hair") || descriptor.Contains("capelli")) category = 2;
+                else if (descriptor.Contains("dress") || descriptor.Contains("cloth") ||
+                         descriptor.Contains("gown") || descriptor.Contains("shirt")) category = 1;
+                else if (descriptor.Contains("head") || descriptor.Contains("face") ||
+                         descriptor.Contains("skin") || descriptor.Contains("body")) category = 0;
 
-        float ratio = Mathf.Clamp(targetHeight / bounds.size.y, .001f, 1000f);
-        instance.transform.localScale *= ratio;
-        bounds = meshes[0].bounds;
-        foreach (var r in meshes) bounds.Encapsulate(r.bounds);
-        Vector3 offset = new Vector3(-bounds.center.x, -bounds.min.y, -bounds.center.z);
-        instance.transform.position += offset;
-        Debug.Log("[LastShift / Model] Fitted real 3D FBX to " +
-                  bounds.size.y.ToString("F2") + " meters (scale factor " +
-                  ratio.ToString("F4") + ").");
+                // If FBX material labels are generic, use slot order as best effort
+                // but log exactly what was chosen for correction in Unity Inspector.
+                if (category < 0) category = materialOrdinal % 3;
+                string assetPath = Generated + "/Patient_" + groupLabels[category] + "_Material_" + materialOrdinal + ".mat";
+                Material m = AssetDatabase.LoadAssetAtPath<Material>(assetPath);
+                if (m == null)
+                {
+                    m = new Material(Ward13UrpMaterialTools.LitShader());
+                    m.name = "The Patient " + groupLabels[category] + " (" + slot + ")";
+                    AssetDatabase.CreateAsset(m, assetPath);
+                }
+                m.shader = Ward13UrpMaterialTools.LitShader();
+                var diffuse = maps[category][0];
+                var normal = maps[category][1];
+                var spec = maps[category][2];
+                // Prefer the artist's FBX diffuse when different from expected DDS.
+                if (original != null && original.mainTexture != null)
+                    diffuse = original.mainTexture as Texture2D ?? diffuse;
+                if (m.HasProperty("_BaseMap")) m.SetTexture("_BaseMap", diffuse);
+                if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", Color.white);
+                if (normal != null && m.HasProperty("_BumpMap"))
+                {
+                    m.SetTexture("_BumpMap", normal);
+                    m.EnableKeyword("_NORMALMAP");
+                }
+                if (spec != null && m.HasProperty("_SpecGlossMap"))
+                {
+                    m.SetFloat("_WorkflowMode", 0f); // Specular workflow
+                    m.SetTexture("_SpecGlossMap", spec);
+                    m.EnableKeyword("_SPECULAR_SETUP");
+                    m.EnableKeyword("_SPECGLOSSMAP");
+                }
+                if (category == 2)
+                {
+                    // Hair alpha is in the original DDS diffuse.
+                    m.SetFloat("_AlphaClip", 1f);
+                    m.SetFloat("_Cutoff", .33f);
+                    m.EnableKeyword("_ALPHATEST_ON");
+                    m.SetFloat("_Cull", 0f);
+                }
+                else
+                {
+                    m.SetFloat("_AlphaClip", 0f);
+                    m.DisableKeyword("_ALPHATEST_ON");
+                    m.SetFloat("_Cull", 2f);
+                }
+                EditorUtility.SetDirty(m);
+                mapped[slot] = m;
+                Debug.Log("[LastShift / DDS] " + renderer.name + "/" + slot +
+                    " : " + (original != null ? original.name : "(none)") + " -> " +
+                    groupLabels[category] + " | diffuse=" + (diffuse != null ? diffuse.name : "MISSING"));
+            }
+            renderer.sharedMaterials = mapped;
+        }
     }
 
-    private static List<AnimationClip> FindRealClips(string modelPath)
+    private static List<AnimationClip> FindClips(string modelPath)
     {
         var paths = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { modelPath };
         foreach (var guid in AssetDatabase.FindAssets("t:AnimationClip", new[] { AnimFolder }))
             paths.Add(AssetDatabase.GUIDToAssetPath(guid));
         foreach (var guid in AssetDatabase.FindAssets("t:Model", new[] { AnimFolder }))
             paths.Add(AssetDatabase.GUIDToAssetPath(guid));
-
-        var clips = new List<AnimationClip>();
-        foreach (var p in paths.OrderBy(x => x))
-        {
-            foreach (var asset in AssetDatabase.LoadAllAssetsAtPath(p))
-            {
-                if (!(asset is AnimationClip clip) || clip.legacy ||
-                    clip.name.StartsWith("__preview__", StringComparison.OrdinalIgnoreCase))
-                    continue;
-                if (!clips.Contains(clip)) clips.Add(clip);
-            }
-        }
-        return clips;
+        var result = new List<AnimationClip>();
+        foreach (var p in paths)
+            foreach (var obj in AssetDatabase.LoadAllAssetsAtPath(p))
+                if (obj is AnimationClip clip && !clip.legacy &&
+                    !clip.name.StartsWith("__preview__", StringComparison.OrdinalIgnoreCase))
+                    result.Add(clip);
+        return result;
     }
 
-    private static Dictionary<PatientMotion, AnimationClip> MapMotionClips(
-        List<AnimationClip> actual, out int nativeMask, out string report)
+    private static Dictionary<PatientMotion, AnimationClip> MapClips(
+        List<AnimationClip> clips, out int nativeMask, out string report)
     {
-        var map = new Dictionary<PatientMotion, AnimationClip>();
         nativeMask = 0;
-        var sb = new StringBuilder();
-        sb.AppendLine("Imported FBX clips: " +
-            (actual.Count == 0 ? "(none)" : string.Join(", ", actual.Select(c => c.name).ToArray())));
-
-        // Original user-supplied clip names are not known ahead of time.
-        // Prefer semantic matches, then reuse a valid existing clip when necessary.
-        var aliases = new Dictionary<PatientMotion, string[]>
+        var result = new Dictionary<PatientMotion, AnimationClip>();
+        var sb = new StringBuilder("FBX animation clips: " +
+            (clips.Count == 0 ? "none" : string.Join(", ", clips.Select(x=>x.name).ToArray())) + "\n");
+        foreach (var motion in Motions)
         {
-            {PatientMotion.Idle, new[] {"idle","breath","stand","default","take 001","take 01","take 1"}},
-            {PatientMotion.Walk, new[] {"walk","creep","locomotion","move"}},
-            {PatientMotion.Run, new[] {"run","sprint","chase"}},
-            {PatientMotion.Stare, new[] {"stare","look","watch","idle"}},
-            {PatientMotion.Frightened, new[] {"fear","fright","recoil","flinch","hit","stun"}},
-            {PatientMotion.Scare, new[] {"scare","scream","roar","jump","gesture"}},
-            {PatientMotion.Attack, new[] {"attack","strike","slash","grab","lunge","bite"}},
-            {PatientMotion.Appear, new[] {"appear","spawn","rise","start","idle"}},
-            {PatientMotion.Vanish, new[] {"vanish","disappear","fade","die","death","idle"}},
-            {PatientMotion.Stunned, new[] {"stun","hit","fear","flinch","recoil"}}
-        };
-
-        foreach (PatientMotion motion in MotionOrder)
-        {
-            AnimationClip best = null;
-            foreach (string alias in aliases[motion])
+            AnimationClip match = null;
+            foreach (var alias in Aliases[motion])
             {
-                best = actual.FirstOrDefault(c =>
-                    c.name.Equals(alias, StringComparison.OrdinalIgnoreCase));
-                if (best != null) break;
-                best = actual.FirstOrDefault(c =>
-                    c.name.IndexOf(alias, StringComparison.OrdinalIgnoreCase) >= 0);
-                if (best != null) break;
+                match = clips.FirstOrDefault(x => x.name.Equals(alias, StringComparison.OrdinalIgnoreCase));
+                if (match == null)
+                    match = clips.FirstOrDefault(x => x.name.IndexOf(alias, StringComparison.OrdinalIgnoreCase) >= 0);
+                if (match != null) break;
             }
-
-            bool exactSemantic = best != null;
-            if (exactSemantic)
-                nativeMask |= (1 << (int)motion);
-            else if (actual.Count > 0)
-                best = map.TryGetValue(PatientMotion.Idle, out AnimationClip idle)
-                    ? idle : actual[0];
-
-            if (best != null) map[motion] = best;
-            sb.AppendLine("  " + motion + " -> " +
-                (best != null ? best.name + (exactSemantic ? " [matched]" : " [fallback]") : "(no clip)"));
+            if (match != null)
+            {
+                nativeMask |= 1 << (int)motion;
+                result[motion] = match;
+            }
+            // A genuine walk clip can be sped up for the running state.
+            else if (motion == PatientMotion.Run && result.ContainsKey(PatientMotion.Walk))
+                result[motion] = result[PatientMotion.Walk];
+            sb.AppendLine(motion + " = " +
+                (result.TryGetValue(motion, out var selected) ? selected.name : "unavailable"));
         }
-
         report = sb.ToString();
-        return map;
+        return result;
     }
 
     private static AnimatorController BuildController(Dictionary<PatientMotion, AnimationClip> map)
     {
         if (!AssetDatabase.IsValidFolder(Generated))
             AssetDatabase.CreateFolder(Folder, "Generated");
-
-        var controller = AssetDatabase.LoadAssetAtPath<AnimatorController>(ControllerPath);
-        // Recreating saved controller is intentional; scene gets the newly generated one.
-        if (controller != null) AssetDatabase.DeleteAsset(ControllerPath);
-        controller = AnimatorController.CreateAnimatorControllerAtPath(ControllerPath);
-
-        var states = controller.layers[0].stateMachine;
+        if (AssetDatabase.LoadAssetAtPath<AnimatorController>(ControllerPath) != null)
+            AssetDatabase.DeleteAsset(ControllerPath);
+        var controller = AnimatorController.CreateAnimatorControllerAtPath(ControllerPath);
+        var machine = controller.layers[0].stateMachine;
         AnimatorState idle = null;
-        foreach (PatientMotion motion in MotionOrder)
+        foreach (var motion in Motions)
         {
-            var state = states.AddState(motion.ToString());
-            if (map.TryGetValue(motion, out AnimationClip clip)) state.motion = clip;
-            state.speed = motion == PatientMotion.Run ? 1.55f :
-                          motion == PatientMotion.Walk ? .9f : 1f;
-            state.writeDefaultValues = true;
+            var state = machine.AddState(motion.ToString());
+            if (map.TryGetValue(motion, out var clip)) state.motion = clip;
+            state.speed = motion == PatientMotion.Run ? 1.4f :
+                          motion == PatientMotion.Walk ? .85f : 1f;
             if (motion == PatientMotion.Idle) idle = state;
         }
-        if (idle != null) states.defaultState = idle;
+        if (idle != null) machine.defaultState = idle;
         EditorUtility.SetDirty(controller);
         AssetDatabase.SaveAssets();
         return controller;
