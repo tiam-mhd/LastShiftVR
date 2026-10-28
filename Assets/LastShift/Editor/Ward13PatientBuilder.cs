@@ -320,7 +320,7 @@ public static class Ward13PatientBuilder
     {
         var pos = new Vector3(point.x, .58f, point.z);
         Box("Fuse cabinet " + number, pos, new Vector3(.82f, 1.1f, .70f),
-            metal, world, true);
+            metal, world, false);
         Box("Fuse cabinet glowing trim " + number, pos + new Vector3(0f, .57f, 0f),
             new Vector3(.67f, .055f, .57f), amber, world, false);
         Box("Ceramic panel " + number, pos + new Vector3(0f, .11f, .38f),
@@ -363,7 +363,7 @@ public static class Ward13PatientBuilder
             AssetDatabase.CreateFolder(Base, "GeneratedMaterials");
         var path = dir + "/" + name + ".mat";
         var saved = AssetDatabase.LoadAssetAtPath<Material>(path);
-        if (saved != null) return saved;
+        if (saved != null) { PatientSurfaceGenerator.Apply(saved, name, color); return saved; }
         var shader = Shader.Find("Universal Render Pipeline/Lit");
         if (shader == null) shader = Shader.Find("Standard");
         var m = new Material(shader) { name = name };
@@ -376,6 +376,8 @@ public static class Ward13PatientBuilder
             m.SetColor("_EmissionColor", emission.Value);
         }
         AssetDatabase.CreateAsset(m, path);
+        PatientSurfaceGenerator.Apply(m, name, color);
+        EditorUtility.SetDirty(m);
         return m;
     }
 }
