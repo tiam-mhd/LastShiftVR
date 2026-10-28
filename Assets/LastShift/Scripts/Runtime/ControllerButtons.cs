@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.XR;
+using XRCommonUsages = UnityEngine.XR.CommonUsages;
 
 namespace LastShift
 {
@@ -17,7 +18,7 @@ namespace LastShift
             }
             var device = InputDevices.GetDeviceAtXRNode(XRNode.RightHand);
             return device.isValid &&
-                device.TryGetFeatureValue(CommonUsages.triggerButton, out bool value) && value;
+                device.TryGetFeatureValue(XRCommonUsages.triggerButton, out bool value) && value;
         }
 
         public static bool RightGrip()
@@ -26,7 +27,7 @@ namespace LastShift
                 return Keyboard.current != null && Keyboard.current.fKey.isPressed;
             var device = InputDevices.GetDeviceAtXRNode(XRNode.RightHand);
             return device.isValid &&
-                device.TryGetFeatureValue(CommonUsages.gripButton, out bool value) && value;
+                device.TryGetFeatureValue(XRCommonUsages.gripButton, out bool value) && value;
         }
 
         public static Vector2 Stick(XRNode hand)
@@ -45,7 +46,7 @@ namespace LastShift
                 return Vector2.zero;
             }
             var device = InputDevices.GetDeviceAtXRNode(hand);
-            return device.isValid && device.TryGetFeatureValue(CommonUsages.primary2DAxis, out Vector2 v)
+            return device.isValid && device.TryGetFeatureValue(XRCommonUsages.primary2DAxis, out Vector2 v)
                 ? v : Vector2.zero;
         }
     }
