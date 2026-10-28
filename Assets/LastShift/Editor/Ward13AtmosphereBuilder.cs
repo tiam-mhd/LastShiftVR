@@ -15,7 +15,7 @@ public static class Ward13AtmosphereBuilder
 {
     private const string MaterialFolder = "Assets/LastShift/GeneratedMaterials";
 
-    [MenuItem("Tools/Last Shift/Generate Ward 13 - Atmospheric Preview v0.2")]
+    // Internal helper; no legacy/test menu entry.
     public static void Build()
     {
         // Existing generator creates and saves the wired base scene.
