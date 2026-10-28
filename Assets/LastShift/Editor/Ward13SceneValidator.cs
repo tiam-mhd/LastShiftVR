@@ -35,8 +35,18 @@ public static class Ward13SceneValidator
         }
         else if (!rig.IsReady)
         {
-            Debug.LogWarning("[Ward13] The Patient is not ready: import a real Humanoid FBX " +
-                "and Idle/Walk/Run/Attack clips. The invisible enemy is disabled.");
+            Debug.LogError("[Ward13] The actual FBX model did not produce renderable mesh geometry. " +
+                "Check shabannn.fbx and its Unity Inspector import settings.");
+            problems++;
+        }
+        else
+        {
+            Debug.Log("[Ward13] REAL 3D model verified: " + rig.characterRoot.name +
+                " | Animator clips available: " + rig.HasAnimation);
+            if (!rig.HasAnimation)
+                Debug.LogWarning("[Ward13] 3D model is present and visible, " +
+                    "but FBX has no imported compatible motion clips. " +
+                    "Real skeletal animations must be added for cinematic movement.");
         }
         var game = Object.FindFirstObjectByType<LastShiftGame>(FindObjectsInactive.Include);
         if (game == null || game.ghostDirector == null ||
