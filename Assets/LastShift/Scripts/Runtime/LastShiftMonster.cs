@@ -7,6 +7,11 @@ namespace LastShift
     public sealed class LastShiftMonster : MonoBehaviour
     {
         public float chaseSpeed = 1.08f;
+        public float runSpeed = 1.9f;
+        public float runTriggerDistance = 5f;
+        public bool IsHunting => hunting && !attacking;
+        public bool IsAttacking => attacking;
+        public bool IsStunned { get; private set; }
         public float captureDistance = 1.12f;
         public float acceleration = 1.3f;
         public float revealSeconds = 1.35f;
@@ -30,6 +35,7 @@ namespace LastShift
             visual = GetComponent<GhostGirlVisual>();
             currentSpeed = .3f;
             attacking = false;
+            IsStunned = false;
             hunting = true;
             gameObject.SetActive(true);
             enabled = true;
@@ -62,6 +68,7 @@ namespace LastShift
 
             bool stunned = torch != null &&
                 torch.HoldsMonster(transform.position + Vector3.up * 1.13f, transform);
+            IsStunned = stunned;
             if (stunned)
             {
                 currentSpeed = Mathf.MoveTowards(currentSpeed, 0f, Time.deltaTime * 4.3f);
@@ -71,7 +78,8 @@ namespace LastShift
             var destination = path != null ? path.Target(transform.position) : head.position;
             destination.y = transform.position.y;
             var direction = destination - transform.position;
-            currentSpeed = Mathf.MoveTowards(currentSpeed, chaseSpeed, Time.deltaTime * acceleration);
+            float speedTarget = flat.magnitude < runTriggerDistance ? runSpeed : chaseSpeed;
+            currentSpeed = Mathf.MoveTowards(currentSpeed, speedTarget, Time.deltaTime * acceleration);
             if (direction.sqrMagnitude > .015f)
             {
                 transform.position = Vector3.MoveTowards(transform.position,
@@ -103,6 +111,8 @@ namespace LastShift
         {
             attacking = true;
             hunting = false;
+            var animationDriver = GetComponent<PatientAnimationDriver>();
+            if (animationDriver != null) animationDriver.Play(PatientAction.Attack, revealSeconds);
             if (visual == null) visual = GetComponent<GhostGirlVisual>();
             if (visual != null) { visual.EnsureVisual(); visual.SetOpacity(1f); }
 
