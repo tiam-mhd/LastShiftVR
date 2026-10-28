@@ -165,7 +165,8 @@ public static class Ward13PatientBuilder
         col.radius = .35f;
         var realRig = monster.gameObject.AddComponent<PatientCharacterRig>();
         bool hasRealCharacter = PatientCharacterImporter.AttachRealModel(monster);
-        monster.gameObject.AddComponent<PatientPathChase>();
+        var chasePath = monster.gameObject.AddComponent<PatientPathChase>();
+        chasePath.player = Camera.main != null ? Camera.main.transform : null;
         monster.chaseSpeed = .95f;
         monster.runSpeed = 1.85f;
         monster.runTriggerDistance = 5f;
@@ -201,6 +202,21 @@ public static class Ward13PatientBuilder
             new Color(1f, .48f, .09f), .8f, 2.5f);
         ConnectElectricCircuits(systems, game);
         ConnectEnvironmentalHorror(systems, game);
+
+        // URP was reducing 12 shadow maps inside a 2048 atlas every time
+        // the emergency lighting changed; use shadowless practical lamps
+        // for the PCVR prototype, keeping actual geometry and textures.
+        int disabledShadowMaps = 0;
+        foreach (var sceneLight in Object.FindObjectsByType<Light>(FindObjectsSortMode.None))
+        {
+            if (sceneLight.shadows != LightShadows.None)
+            {
+                sceneLight.shadows = LightShadows.None;
+                disabledShadowMaps++;
+            }
+        }
+        Debug.Log("[LastShift / Performance] Disabled " + disabledShadowMaps +
+            " realtime shadow casters to avoid VR fuse-pickup shadow-atlas stalls.");
 
         var playerRig = GameObject.Find("PCVR Player Rig");
         if (playerRig != null)
