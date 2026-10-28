@@ -25,11 +25,18 @@ public static class Ward13SceneValidator
         if (!Has("PCVR Player Rig")) { Debug.LogError("[Ward13] Missing player rig"); problems++; }
         if (!Has("THE WATCHER")) { Debug.LogError("[Ward13] Missing ghost root"); problems++; }
 
-        var texture = Resources.Load<Texture2D>("GhostGirlReference");
-        if (texture == null)
+        // Original PNG is reference artwork only. Its absence must never
+        // force a fake portrait-based character back into the game.
+        var rig = Object.FindFirstObjectByType<PatientCharacterRig>(FindObjectsInactive.Include);
+        if (rig == null)
         {
-            Debug.LogError("[Ward13] GhostGirlReference.png missing from Resources");
+            Debug.LogError("[Ward13] Real character importer component missing.");
             problems++;
+        }
+        else if (!rig.IsReady)
+        {
+            Debug.LogWarning("[Ward13] The Patient is not ready: import a real Humanoid FBX " +
+                "and Idle/Walk/Run/Attack clips. The invisible enemy is disabled.");
         }
         var game = Object.FindFirstObjectByType<LastShiftGame>(FindObjectsInactive.Include);
         if (game == null || game.ghostDirector == null ||
@@ -53,7 +60,7 @@ public static class Ward13SceneValidator
         }
 
         if (problems == 0)
-            Debug.Log("[Ward13] v0.3 SCENE STRUCTURE OK: " + scene.name +
+            Debug.Log("[Ward13] REAL FBX PIPELINE SCENE STRUCTURE OK: " + scene.name +
                 ". This is an editor validation, not a gameplay or hardware test.");
         else
             Debug.LogError("[Ward13] Scene validation failed with " + problems +
