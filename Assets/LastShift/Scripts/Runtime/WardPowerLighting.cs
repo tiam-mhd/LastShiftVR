@@ -137,11 +137,18 @@ namespace LastShift
             int indicatorState = powered ? 4 : installed;
             if (circuitIndicators != null && indicatorState != appliedIndicatorState)
             {
+                // Unity may reload this scene/component without rerunning Start
+                // (e.g. disabled domain/scene reload in Editor). Never pass null
+                // into Renderer.GetPropertyBlock or spam exceptions every frame.
+                if (block == null) block = new MaterialPropertyBlock();
                 appliedIndicatorState = indicatorState;
                 for (int i = 0; i < circuitIndicators.Length; i++)
                 {
                     var r = circuitIndicators[i];
                     if (r == null) continue;
+                    // Reuse the same block but reset unrelated properties
+                    // between renderers to avoid leaking another circuit state.
+                    block.Clear();
                     Color col = powered ? Color.green : i < installed
                         ? new Color(1f,.56f,.09f) : new Color(.26f,.04f,.035f);
                     r.GetPropertyBlock(block);
