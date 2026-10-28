@@ -16,8 +16,12 @@ public sealed class VRLocomotion:MonoBehaviour{
   Vector2 stick=input!=null&&input.HasLeftHand?Vector2.zero:ControllerButtons.Stick(XRNode.LeftHand);
   Vector3 f=Vector3.ProjectOnPlane(head.forward,Vector3.up).normalized;
   Vector3 rt=Vector3.ProjectOnPlane(head.right,Vector3.up).normalized;
-  capsule.Move(Vector3.ClampMagnitude(f*stick.y+rt*stick.x,1)*speed*Time.deltaTime+
-    Vector3.down*.7f*Time.deltaTime);
+  Vector3 delta=Vector3.ClampMagnitude(f*stick.y+rt*stick.x,1)*speed*Time.deltaTime;
+  // Hard limit to the actual corridor and side wards; stop at the boundary
+  // instead of showing the exterior Unity skybox.
+  if(!WardSpatial.Contains(head.position+delta))
+    delta=Vector3.zero;
+  capsule.Move(delta+Vector3.down*.7f*Time.deltaTime);
   Vector2 turn=input!=null&&input.HasRightHand?Vector2.zero:ControllerButtons.Stick(XRNode.RightHand);
   if(Mathf.Abs(turn.x)<.25f)ready=true;
   if(ready&&Mathf.Abs(turn.x)>.8f){transform.RotateAround(head.position,Vector3.up,snapAngle*Mathf.Sign(turn.x));ready=false;}
