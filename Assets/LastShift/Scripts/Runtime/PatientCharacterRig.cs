@@ -14,6 +14,8 @@ namespace LastShift
     public sealed class PatientCharacterRig : MonoBehaviour
     {
         public GameObject characterRoot;
+        [Tooltip("The actual FBX character branch; excludes cinematic Sky/Camera objects.")]
+        public Transform characterMeshRoot;
         public Animator animator;
         [Tooltip("Bits for semantic clips found in the original imported file. Other states may reuse a source clip.")]
         public int availableMotionMask;
@@ -55,9 +57,11 @@ namespace LastShift
         public bool Has(PatientMotion motion) =>
             (availableMotionMask & (1 << (int)motion)) != 0;
 
-        public void Configure(GameObject realModel, Animator modelAnimator, int motionMask)
+        public void Configure(GameObject realModel, Animator modelAnimator, int motionMask,
+            Transform actualCharacterMesh = null)
         {
             characterRoot = realModel;
+            characterMeshRoot = actualCharacterMesh;
             animator = modelAnimator;
             availableMotionMask = motionMask;
             CacheRenderers();
@@ -73,8 +77,10 @@ namespace LastShift
 
         private void CacheRenderers()
         {
-            renderers = characterRoot != null
-                ? characterRoot.GetComponentsInChildren<Renderer>(true)
+            var meshRoot = characterMeshRoot != null ? characterMeshRoot :
+                (characterRoot != null ? characterRoot.transform : null);
+            renderers = meshRoot != null
+                ? meshRoot.GetComponentsInChildren<Renderer>(true)
                 : Array.Empty<Renderer>();
         }
 
