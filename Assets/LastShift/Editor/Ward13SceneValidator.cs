@@ -116,10 +116,15 @@ public static class Ward13SceneValidator
         }
         var cameras = Object.FindObjectsByType<Camera>(FindObjectsInactive.Include,
             FindObjectsSortMode.None);
-        if (cameras.Length != 1)
+        int usableCameras = 0;
+        foreach (var camera in cameras)
+            if (camera.enabled && camera.gameObject.activeInHierarchy) usableCameras++;
+        // In Edit Mode a single player camera must be usable; FBX cinematic
+        // cameras can be present as disabled objects without affecting gameplay.
+        if (usableCameras != 1)
         {
-            Debug.LogWarning("[Ward13] Expected exactly 1 camera; got " + cameras.Length +
-                ". Check for extra audio listener/camera from your template.");
+            Debug.LogWarning("[Ward13] Expected one active game camera; found " +
+                usableCameras + " (the FBX must not override the PCVR camera).");
         }
 
         if (problems == 0)
