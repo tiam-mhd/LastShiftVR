@@ -173,6 +173,7 @@ public static class Ward13PatientBuilder
         RoomLight("Power breaker highlight", new Vector3(1.6f, 1.7f, -7f),
             new Color(1f, .48f, .09f), .8f, 2.5f);
         ConnectElectricCircuits(systems, game);
+        ConnectEnvironmentalHorror(systems, game);
 
         if (Camera.main != null)
         {
@@ -362,6 +363,54 @@ public static class Ward13PatientBuilder
         return go;
     }
 
+
+    /// <summary>
+    /// Environmental scares remain active before the final 3D FBX is imported;
+    /// they never impersonate an invisible enemy or trigger a phantom Game Over.
+    /// </summary>
+    private static void ConnectEnvironmentalHorror(GameObject systems, LastShiftGame game)
+    {
+        var horror = systems.AddComponent<WardHorrorEvents>();
+        horror.game = game;
+        game.horrorEvents = horror;
+        var soundOrigin = new GameObject("DISTANT WARD NOISE");
+        soundOrigin.transform.SetParent(world, false);
+        soundOrigin.transform.position = new Vector3(0f, 1.5f, 10.5f);
+        horror.corridorSoundPoint = soundOrigin.transform;
+
+        var rear = new GameObject("BEHIND YOU / WHISPER LOCATION");
+        var playerRig = GameObject.Find("PCVR Player Rig");
+        if (playerRig != null)
+        {
+            rear.transform.SetParent(playerRig.transform, false);
+            rear.transform.localPosition = new Vector3(0f, 1.5f, -2.2f);
+        }
+        else
+        {
+            rear.transform.SetParent(world, false);
+            rear.transform.position = new Vector3(0f, 1.5f, -8f);
+        }
+        horror.rearSoundPoint = rear.transform;
+
+        var lightGo = new GameObject("Horror / dim amber event pulse");
+        lightGo.transform.SetParent(world, false);
+        lightGo.transform.position = new Vector3(0f, 2.6f, 4.0f);
+        var light = lightGo.AddComponent<Light>();
+        light.type = LightType.Point;
+        light.color = new Color(1f, .25f, .095f);
+        light.range = 12f;
+        light.intensity = 0f;
+        light.shadows = LightShadows.None;
+        horror.scareLight = light;
+
+        // An actual moving door slab provides a visible, non-character scare.
+        var pivot = new GameObject("Horror / side door hinge");
+        pivot.transform.SetParent(world, false);
+        pivot.transform.position = new Vector3(2.43f, 0f, -1.1f);
+        Box("Horror / slamming ward door", pivot.transform.position + new Vector3(-.05f, 1.04f, .55f),
+            new Vector3(.12f, 2.05f, 1.1f), metal, pivot.transform, false);
+        horror.doorPivot = pivot.transform;
+    }
 
     /// <summary>Bind real-time point lights to the three physical fuse circuits.</summary>
     private static void ConnectElectricCircuits(GameObject systems, LastShiftGame game)
