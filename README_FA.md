@@ -1,3 +1,24 @@
+# رفع خطای «This cannot be used during play mode» — راهنمای فوری
+
+اگر در Unity هنگام انتخاب سازنده مرحله این خطا را دیدی:
+
+`InvalidOperationException: This cannot be used during play mode`
+
+علت این است که `Tools > Last Shift > Build Final Ward 13 - Real Patient FBX` را **در حالت Play (دکمه آبی بالای Unity)** اجرا کرده‌ای. ذخیره و بازسازی Scene در حالت Play مجاز نیست؛ پس FBX در صحنه جدید قرار نگرفته است.
+
+1. روی دکمه Play بالای Unity یک بار کلیک کن تا خاموش شود و به **Edit Mode** برگردی.
+2. اگر صحنه را دستی ویرایش کرده‌ای، آن را قبل از تولید مجدد جداگانه Backup کن. سازنده صحنهٔ فعلی Ward13_Prototype را از نو ایجاد می‌کند.
+3. بعد از بستن Unity آخرین ZIP گیت‌هاب را بگیر و پوشه `Assets/LastShift` را تمیز جایگزین کن؛ برای خود این خطا نیازی به دانلود مجدد FBX به‌صورت جداگانه نیست.
+4. Unity را باز کن و از منوی `Tools > Last Shift > Build Final Ward 13 - Real Patient FBX` **در حالت Edit** استفاده کن.
+5. منو در نسخه به‌روز، هنگام Play یا Compile غیرفعال خواهد شد. بعد از ساخت صحنه، در Hierarchy بخش `THE WATCHER` را باز کن؛ باید `The Patient - Ghost Girl Animated (real FBX)` را ببینی. والد دشمن ابتدا غیرفعال است.
+6. در Scene View برای مشاهده مدل، با احتیاط والد را فعال کن و روی مدل F بزن؛ سپس قبل از شروع Play آن را به حالت غیرفعال برگردان.
+7. در Console دنبال پیام `The Patient is VISIBLE and READY` یا خطاهای `[LastShift / Model]` بگرد. اگر مدل زیر والد وجود نداشت، ابتدا پیام همین واردکننده را بررسی کن.
+8. اکنون Play را اجرا کن؛ نخستین ظهور در ثانیه‌های ابتدایی طراحی شده و پس از دومین فیوز تعقیب فعال می‌شود.
+
+پیام‌های `Reduced additional punctual light shadows resolution` هشدار بودجه سایه‌های URP هستند، نه دلیل ندیدن مدل و نه علت خطای Play Mode. پس از اینکه مدل قابل مشاهده شد، می‌توان بودجه نور و سایه را بهینه کرد.
+
+---
+
 # LastShiftVR — Ghost Girl Animated / The Patient
 
 ## وضعیت واقعی نسخه فعلی
