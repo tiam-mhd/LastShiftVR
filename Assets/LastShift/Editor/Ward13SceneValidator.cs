@@ -23,6 +23,18 @@ public static class Ward13SceneValidator
         if (!Has("WARD 12 / TREATMENT")) { Debug.LogError("[Ward13] Missing treatment room"); problems++; }
         if (!Has("WARD 14 / SURGERY")) { Debug.LogError("[Ward13] Missing surgery room"); problems++; }
         if (!Has("PCVR Player Rig")) { Debug.LogError("[Ward13] Missing player rig"); problems++; }
+        var bounds = Object.FindFirstObjectByType<WardPlayerBounds>(FindObjectsInactive.Include);
+        if (bounds == null || bounds.head == null)
+        {
+            Debug.LogError("[Ward13] Playable-area guard or its head reference missing.");
+            problems++;
+        }
+        if (!Has("Treatment room solid doorway threshold") ||
+            !Has("Surgery room solid doorway threshold"))
+        {
+            Debug.LogError("[Ward13] One or more doorway floor collision bridges missing.");
+            problems++;
+        }
         if (!Has("THE WATCHER")) { Debug.LogError("[Ward13] Missing ghost root"); problems++; }
 
         // Original PNG is reference artwork only. Its absence must never
