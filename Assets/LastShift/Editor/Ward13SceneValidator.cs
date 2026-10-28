@@ -56,9 +56,50 @@ public static class Ward13SceneValidator
             Debug.Log("[Ward13] REAL 3D model verified: " + rig.characterRoot.name +
                 " | Animator clips available: " + rig.HasAnimation);
             if (!rig.HasAnimation)
-                Debug.LogWarning("[Ward13] 3D model is present and visible, " +
-                    "but FBX has no imported compatible motion clips. " +
-                    "Real skeletal animations must be added for cinematic movement.");
+                Debug.LogWarning("[Ward13] Real FBX has no compatible skeletal clips: " +
+                    "animation quality will be limited until source clips are added.");
+
+            // The original Sketchfab scene includes a massive Sky mesh and
+            // secondary cameras/lights. They MUST NOT be active in Ward 13.
+            if (rig.characterRoot != null)
+            {
+                var transforms = rig.characterRoot.GetComponentsInChildren<Transform>(true);
+                foreach (var t in transforms)
+                {
+                    if (t.name.Equals("Sky", System.StringComparison.OrdinalIgnoreCase) &&
+                        t.gameObject.activeInHierarchy)
+                    {
+                        Debug.LogError("[Ward13] Imported FBX Sky is ACTIVE and obscuring the hospital!");
+                        problems++;
+                    }
+                }
+                foreach (var extraCamera in rig.characterRoot.GetComponentsInChildren<Camera>(true))
+                    if (extraCamera.enabled && extraCamera.gameObject.activeInHierarchy)
+                    {
+                        Debug.LogError("[Ward13] Imported FBX camera is active!");
+                        problems++;
+                    }
+                foreach (var extraLight in rig.characterRoot.GetComponentsInChildren<Light>(true))
+                    if (extraLight.enabled && extraLight.gameObject.activeInHierarchy)
+                    {
+                        Debug.LogError("[Ward13] Imported FBX cinematic light is active!");
+                        problems++;
+                    }
+            }
+            string[] textures = {
+                "ghost_dress_d.dds", "ghost_dress_n.dds", "ghost_dress_s.dds",
+                "ghost_head_d1.dds", "ghost_head_n1.dds", "ghost_head_s1.dds",
+                "hair_02_d.dds", "hair_02_n.dds", "hair_02_s.dds"
+            };
+            foreach (string texture in textures)
+            {
+                string path = PatientCharacterImporter.TextureFolder + "/" + texture;
+                if (AssetDatabase.LoadAssetAtPath<Texture2D>(path) == null)
+                {
+                    Debug.LogError("[Ward13] Missing character DDS texture: " + path);
+                    problems++;
+                }
+            }
         }
         var game = Object.FindFirstObjectByType<LastShiftGame>(FindObjectsInactive.Include);
         if (game == null || game.ghostDirector == null ||
