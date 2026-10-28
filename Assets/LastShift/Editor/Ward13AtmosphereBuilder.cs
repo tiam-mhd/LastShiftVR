@@ -18,6 +18,11 @@ public static class Ward13AtmosphereBuilder
     // Internal helper; no legacy/test menu entry.
     public static void Build()
     {
+        if (EditorApplication.isPlayingOrWillChangePlaymode)
+        {
+            Debug.LogWarning("[LastShift] Atmospheric scene builder requires Edit Mode.");
+            return;
+        }
         // Existing generator creates and saves the wired base scene.
         LastShiftSceneBuilder.Build();
         var rootGo = GameObject.Find("WARD 13");
