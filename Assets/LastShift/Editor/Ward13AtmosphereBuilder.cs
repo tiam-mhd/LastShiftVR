@@ -352,6 +352,8 @@ public static class Ward13AtmosphereBuilder
         var sign = new GameObject("Sign: " + value);
         sign.transform.SetParent(parent);
         sign.transform.position = pos;
+        // TextMesh front side must face the entrance; otherwise labels are mirrored.
+        sign.transform.rotation = Quaternion.Euler(0f, value == "EXIT" ? 0f : 180f, 0f);
         var text = sign.AddComponent<TextMesh>();
         text.text = value;
         text.fontSize = 56;
