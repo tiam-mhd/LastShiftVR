@@ -39,9 +39,11 @@ namespace LastShift
 
         // No invisible enemy: without an actual mesh AND required animation clips,
         // the horror director won't activate the chase.
-        public bool IsReady => HasModel && animator.runtimeAnimatorController != null
-            && Has(PatientMotion.Idle) && Has(PatientMotion.Walk)
-            && Has(PatientMotion.Run) && Has(PatientMotion.Attack);
+        public bool IsReady => HasModel &&
+            characterRoot.GetComponentInChildren<SkinnedMeshRenderer>(true) != null &&
+            animator.runtimeAnimatorController != null &&
+            Has(PatientMotion.Idle) && Has(PatientMotion.Walk) &&
+            Has(PatientMotion.Run) && Has(PatientMotion.Attack);
 
         public bool Has(PatientMotion motion) =>
             (availableMotionMask & (1 << (int)motion)) != 0;
