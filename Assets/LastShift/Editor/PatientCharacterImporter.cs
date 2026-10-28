@@ -120,7 +120,7 @@ public static class PatientCharacterImporter
             string report;
             var map = MapClips(clips, out nativeMask, out report);
             animator.runtimeAnimatorController = BuildController(map);
-            rig.Configure(instance, animator, nativeMask);
+            rig.Configure(instance, animator, nativeMask, character);
             rig.SetVisible(true);
 
             Debug.Log("[LastShift / FBX] Character branch: " + character.name +
