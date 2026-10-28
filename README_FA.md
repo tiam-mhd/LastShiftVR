@@ -1,3 +1,23 @@
+# اصلاحیه v0.3.1 — نمایش شبح و واکنش نور به فیوزها
+
+**این اصلاحیه نیازمند ساخت دوباره Scene است.** فقط کپی اسکریپت‌ها روی صحنهٔ قدیمی کافی نیست: `WardPowerLighting` و متریال دوطرفهٔ شبح باید توسط سازنده به صحنه اضافه شوند.
+
+### مراحل اعمال روی Unity
+1. Play را متوقف کن، از Scene و پروژه پشتیبان بگیر؛ تولید مجدد `Ward13_Prototype.unity` نسخه دستی قبلی را جایگزین می‌کند.
+2. از https://github.com/tiam-mhd/LastShiftVR روی شاخه main گزینه Code > Download ZIP را بزن.
+3. فقط پوشه `Assets/LastShift` را در پروژه Unity جایگزین کن؛ `Packages` و `ProjectSettings` را جایگزین نکن.
+4. Unity > Assets > Refresh؛ Console باید بدون خطای قرمز C# باشد.
+5. گزینه `Tools > Last Shift > Generate Ward 13 - The Patient v0.3` را **دوباره** اجرا کن تا ماتریال شفاف شبح و سه مدار نور به صحنه متصل شوند.
+6. از `Tools > Last Shift > DEBUG - Validate Patient and Power` استفاده کن. Console باید `Texture=True GhostComponent=True PreparedMaterial=True ThreePowerCircuits=True` نمایش دهد.
+7. Play را بزن. از حدود ۲.۵ ثانیه بعد شبح در راهرو به مدت چند ثانیه ظاهر می‌شود؛ اگر گم شد از گزینه `Tools > Last Shift > DEBUG - Show The Patient In Front Of Me (Play Mode)` استفاده کن. او باید ۳.۲ متر مقابل نگاهت ظاهر شود.
+8. برای تست سریع نور بدون جمع‌آوری فیوزها، هنگام Play از منوهای `Tools > Last Shift > DEBUG - Test Fuse Circuit 1 (Play Mode)` تا `... Circuit 3` و سپس `DEBUG - Restore All Power (Play Mode)` استفاده کن. این‌ها **تست تصویری** هستند و شمارندهٔ اصلی مأموریت را تغییر نمی‌دهند.
+9. در گیم‌پلی معمولی برداشتن هر فیوز یک چشمک‌زدن قابل‌مشاهده ایجاد می‌کند؛ هنگام نصب فیوزها در جعبه برق هر مدار روشن می‌شود؛ با فعال‌کردن Breaker روشنایی عمومی راهرو و بخش‌ها زیادتر و نور اضطراری کم می‌شود.
+10. دشمن نباید از پشت دیوار با فاصلهٔ کوتاه فوراً Game Over کند؛ در حمله، تصویر The Patient قبل از Game Over در میدان دید قرار می‌گیرد، بدون حرکت اجباری دوربین VR.
+
+نکته‌ها: شبح یک تصویر دوبعدی رو به دوربین است، نه مدل سه‌بعدی Rigged؛ در لحظه حمله نمایش او باید قابل مشاهده باشد ولی کامپایل Unity و تست روی Quest هنوز باید در سیستم کاربر انجام شود. اگر Shader شفاف در نسخه فعلی URP تصویر نداد، تصویر Console و وضعیت Material `Assets/LastShift/GeneratedMaterials/ThePatient_Visible.mat` را بفرست. برای VR از کنترلر Meta به‌عنوان مسیر مطمئن استفاده کن.
+
+---
+
 # LAST SHIFT VR — نسخه v0.3 / The Patient
 
 **وضعیت:** سورس قابل بازکردن در Unity و سازندهٔ صحنه قابل‌بازی Windows PCVR؛ هنوز فایل EXE از پیش کامپایل‌شده یا تست موفق روی هدست واقعی ارائه نشده است. برای تأیید اجرا، Compile/Play در Unity باید روی سیستم خودت انجام شود.
