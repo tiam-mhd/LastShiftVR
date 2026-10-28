@@ -369,11 +369,13 @@ public static class Ward13AtmosphereBuilder
             AssetDatabase.CreateFolder("Assets/LastShift", "GeneratedMaterials");
         var asset = MaterialFolder + "/" + name + ".mat";
         var existing = AssetDatabase.LoadAssetAtPath<Material>(asset);
-        if (existing != null) return existing;
+        if (existing != null)
+        {
+            Ward13UrpMaterialTools.Repair(existing, color, emission);
+            return existing;
+        }
 
-        var shader = Shader.Find("Universal Render Pipeline/Lit");
-        if (shader == null) shader = Shader.Find("Standard");
-        var result = new Material(shader) { name = name };
+        var result = new Material(Ward13UrpMaterialTools.LitShader()) { name = name };
         if (result.HasProperty("_BaseColor")) result.SetColor("_BaseColor", color);
         if (result.HasProperty("_Color")) result.SetColor("_Color", color);
         if (emission.HasValue && result.HasProperty("_EmissionColor"))
