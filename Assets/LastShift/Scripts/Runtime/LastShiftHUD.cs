@@ -57,11 +57,13 @@ namespace LastShift
 
             if (game.HasEnded)
             {
-                GUI.color = new Color(.01f, .01f, .02f, .85f);
-                GUI.DrawTexture(new Rect(w * .5f - 250, h * .5f - 90, 500, 180), Texture2D.whiteTexture);
+                // Keep the central sight line clear: the ghost must be visible
+                // during and after the capture reveal, never covered by an opaque HUD.
+                GUI.color = new Color(.01f, .01f, .02f, .72f);
+                GUI.DrawTexture(new Rect(w * .5f - 265, h - 170, 530, 66), Texture2D.whiteTexture);
                 GUI.color = Color.white;
-                GUI.Label(new Rect(w * .5f - 230, h * .5f - 40, 460, 100),
-                    game.Phase == GamePhase.Won ? "YOU ESCAPED!" : "THE WATCHER FOUND YOU", alert);
+                GUI.Label(new Rect(w * .5f - 250, h - 164, 500, 50),
+                    game.Phase == GamePhase.Won ? "YOU ESCAPED!" : "THE PATIENT FOUND YOU", alert);
             }
 
             GUI.matrix = previousMatrix;
