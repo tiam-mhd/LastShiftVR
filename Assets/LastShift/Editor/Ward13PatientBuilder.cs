@@ -126,8 +126,8 @@ public static class Ward13PatientBuilder
             game.fusePanel = visual;
         }
 
-        // Replace primitive monster with actual supplied reference art rendered on
-        // a vertically standing transparent quad. Not a fully rigged model.
+        // Remove the prototype capsule/billboard/scan from the generated scene.
+        // The enemy gets ONLY an actual artist-authored FBX or prefab.
         for (int i = monster.transform.childCount - 1; i >= 0; i--)
             Object.DestroyImmediate(monster.transform.GetChild(i).gameObject);
         var col = monster.GetComponent<CapsuleCollider>();
@@ -135,20 +135,20 @@ public static class Ward13PatientBuilder
         col.center = new Vector3(0f, .95f, 0f);
         col.height = 1.9f;
         col.radius = .35f;
-        var visualGhost = monster.gameObject.AddComponent<GhostGirlVisual>();
-        visualGhost.height = 1.83f;
-        visualGhost.preparedMaterial = GhostVisibilityMaterial();
-        visualGhost.hairMaterial = MakeMaterial("Patient_BlackHair", new Color(.029f, .033f, .048f), .96f);
-        SavePatientRigAsAsset(visualGhost);
+        var realRig = monster.gameObject.AddComponent<PatientCharacterRig>();
+        bool hasRealCharacter = PatientCharacterImporter.AttachRealModel(monster);
         monster.gameObject.AddComponent<PatientPathChase>();
         monster.chaseSpeed = .95f;
         monster.runSpeed = 1.85f;
         monster.runTriggerDistance = 5f;
-
+        if (!hasRealCharacter)
+            Debug.LogWarning("[LastShift] A real FBX and four required animation clips are needed. " +
+                "The Patient will NOT chase or cause an invisible game over.");
+        
         var director = systems.AddComponent<GhostDirector>();
         director.game = game;
         director.monster = monster;
-        director.visual = visualGhost;
+        director.rig = realRig;
         game.ghostDirector = director;
 
         // Dark, legible night lighting, keeping budget modest for PCVR.
@@ -361,86 +361,6 @@ public static class Ward13PatientBuilder
         return go;
     }
 
-
-    /// <summary>
-    /// The rig is baked into a genuine Unity Mesh asset, not merely instantiated in Play mode.
-    /// The generated 3D model and bones are serialized into Ward13_Prototype.unity.
-    /// </summary>
-    private static void SavePatientRigAsAsset(GhostGirlVisual visual)
-    {
-        visual.EnsureVisual();
-        Mesh mesh = visual.GeneratedMesh;
-        SkinnedMeshRenderer skinned = visual.ModelRenderer;
-        if (mesh == null || skinned == null)
-        {
-            Debug.LogError("[LastShift] Patient 3D mesh generation failed. Verify readable GhostGirlReference texture.");
-            return;
-        }
-
-        const string directory = "Assets/LastShift/GeneratedMeshes";
-        if (!AssetDatabase.IsValidFolder(directory))
-            AssetDatabase.CreateFolder(Base, "GeneratedMeshes");
-        const string asset = directory + "/ThePatient_3D_Rigged.asset";
-        if (AssetDatabase.LoadAssetAtPath<Mesh>(asset) != null)
-            AssetDatabase.DeleteAsset(asset);
-
-        AssetDatabase.CreateAsset(mesh, asset);
-        skinned.sharedMesh = AssetDatabase.LoadAssetAtPath<Mesh>(asset);
-        skinned.sharedMaterial = visual.preparedMaterial;
-        skinned.updateWhenOffscreen = true;
-        EditorUtility.SetDirty(skinned);
-        Debug.Log("[LastShift] Saved 3D rigged character mesh: " + asset +
-                  " | 7 articulated bones | procedural skeletal animations.");
-    }
-
-    /// <summary>Explicitly referenced transparent material avoids URP shader stripping.</summary>
-    private static Material GhostVisibilityMaterial()
-    {
-        const string directory = "Assets/LastShift/GeneratedMaterials";
-        if (!AssetDatabase.IsValidFolder(directory))
-            AssetDatabase.CreateFolder(Base, "GeneratedMaterials");
-        const string path = directory + "/ThePatient_Visible.mat";
-        var material = AssetDatabase.LoadAssetAtPath<Material>(path);
-        if (material == null)
-        {
-            var shader = Shader.Find("Universal Render Pipeline/Unlit");
-            if (shader == null) shader = Shader.Find("Sprites/Default");
-            if (shader == null) shader = Shader.Find("Unlit/Transparent");
-            if (shader == null) throw new System.InvalidOperationException("No transparent shader for The Patient");
-            material = new Material(shader) { name = "The Patient - Always Visible" };
-            AssetDatabase.CreateAsset(material, path);
-        }
-        const string texturePath = "Assets/LastShift/Resources/GhostGirlReference.png";
-        var importer = AssetImporter.GetAtPath(texturePath) as TextureImporter;
-        if (importer != null && (!importer.isReadable || !importer.alphaIsTransparency))
-        {
-            importer.isReadable = true;
-            importer.alphaIsTransparency = true;
-            importer.mipmapEnabled = true;
-            importer.SaveAndReimport();
-        }
-        var texture = AssetDatabase.LoadAssetAtPath<Texture2D>(texturePath);
-        if (texture == null)
-            Debug.LogError("[LastShift] Missing GhostGirlReference.png. Download the current Assets/LastShift folder.");
-        if (material.HasProperty("_BaseMap")) material.SetTexture("_BaseMap", texture);
-        if (material.HasProperty("_MainTex")) material.SetTexture("_MainTex", texture);
-        if (material.HasProperty("_BaseColor")) material.SetColor("_BaseColor", Color.white);
-        if (material.HasProperty("_Color")) material.SetColor("_Color", Color.white);
-        if (material.HasProperty("_Surface"))
-        {
-            material.SetFloat("_Surface", 1f);
-            material.SetFloat("_Blend", 0f);
-            material.SetFloat("_SrcBlend", 5f);
-            material.SetFloat("_DstBlend", 10f);
-            material.SetFloat("_ZWrite", 0f);
-            material.SetFloat("_Cull", 0f);
-            material.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
-            material.DisableKeyword("_ALPHAPREMULTIPLY_ON");
-        }
-        material.renderQueue = 3000;
-        EditorUtility.SetDirty(material);
-        return material;
-    }
 
     /// <summary>Bind real-time point lights to the three physical fuse circuits.</summary>
     private static void ConnectElectricCircuits(GameObject systems, LastShiftGame game)
