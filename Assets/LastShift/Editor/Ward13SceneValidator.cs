@@ -5,7 +5,7 @@ using LastShift;
 
 public static class Ward13SceneValidator
 {
-    [MenuItem("Tools/Last Shift/Validate Ward 13 v0.3")]
+    // Internal helper; no legacy/test menu entry.
     public static void Validate()
     {
         var problems = 0;
