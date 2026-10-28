@@ -80,7 +80,8 @@ namespace LastShift
             offset.y = 0f;
 
             // A capture requires an actual, unobstructed approach; no capture through walls.
-            if (offset.magnitude <= captureDistance && HasClearSight())
+            if (offset.magnitude <= captureDistance &&
+                IsVisibleToPlayer() && HasClearSight())
             {
                 captureRoutine = StartCoroutine(CaptureReveal());
                 return;
@@ -141,6 +142,20 @@ namespace LastShift
             return true;
         }
 
+        private bool IsVisibleToPlayer()
+        {
+            if (head == null || rig == null || !rig.IsReady) return false;
+            Camera camera = Camera.main;
+            if (camera == null) return false;
+            if (!rig.HasVisibleMesh()) return false;
+            // Don't kill from behind the player, behind the camera, or
+            // while the enemy is completely off screen.
+            Vector3 at = transform.position + Vector3.up * 1.15f;
+            Vector3 p = camera.WorldToViewportPoint(at);
+            return p.z > .15f && p.x >= .08f && p.x <= .92f &&
+                   p.y >= .08f && p.y <= .92f;
+        }
+
         private bool HasClearSight()
         {
             if (head == null) return false;
@@ -193,7 +208,25 @@ namespace LastShift
                 yield return null;
             }
 
-            if (game != null && !game.HasEnded) game.Caught();
+            if (game != null && !game.HasEnded)
+            {
+                Vector3 playerDelta = head != null ? head.position - transform.position : Vector3.zero;
+                playerDelta.y = 0f;
+                if (playerDelta.magnitude <= captureDistance + .5f &&
+                    IsVisibleToPlayer() && HasClearSight())
+                {
+                    game.Caught();
+                }
+                else
+                {
+                    // During the reveal the player may back away or look away.
+                    // Cancel the kill instead of showing GAME OVER with no ghost.
+                    attacking = false;
+                    hunting = true;
+                    rig.SetVisible(true);
+                    Debug.Log("[LastShift / Patient] Capture cancelled: ghost was not visibly in front of player.");
+                }
+            }
             captureRoutine = null;
         }
     }
