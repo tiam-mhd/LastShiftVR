@@ -26,8 +26,8 @@ namespace LastShift
             float towardZ = gaze.z >= 0f ? 1f : -1f;
             if (Mathf.Abs(gaze.z) < .25f) towardZ = player.z > 7f ? -1f : 1f;
             float z = Mathf.Clamp(player.z + towardZ * 5.2f, -9.4f, 12.5f);
-            if (InTreatment(player)) return new Vector3(3.12f, 0f, 1.85f);
-            if (InSurgery(player)) return new Vector3(-3.12f, 0f, 7.25f);
+            if (InTreatment(player)) return new Vector3(0.5f, 0f, 1.85f);
+            if (InSurgery(player)) return new Vector3(-0.5f, 0f, 7.25f);
             return new Vector3(0f, 0f, z);
         }
     }
