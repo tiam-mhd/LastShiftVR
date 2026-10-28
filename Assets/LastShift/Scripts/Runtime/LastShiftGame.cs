@@ -14,6 +14,7 @@ namespace LastShift
         public GhostDirector ghostDirector;
         public FusePanelVisual fusePanel;
         public WardPowerLighting lighting;
+        public WardHorrorEvents horrorEvents;
 
         public GamePhase Phase { get; private set; } = GamePhase.Searching;
         public int CollectedFuses { get; private set; }
@@ -34,11 +35,14 @@ namespace LastShift
             item.MarkTaken();
             CollectedFuses++;
             if (lighting != null) lighting.OnFuseCollected(CollectedFuses);
+            if (horrorEvents != null) horrorEvents.OnFuseTaken(CollectedFuses);
             if (audioSystem != null) audioSystem.PlayPickup();
 
             if (CollectedFuses == 1)
             {
-                Display("Something moved at the far end of the corridor...");
+                Display(ghostDirector != null && ghostDirector.CharacterReady
+                    ? "Something moved at the far end of the corridor..."
+                    : "A metallic knock echoes through the empty ward...");
                 if (ghostDirector != null) ghostDirector.OnFuseCountChanged(1);
             }
             else if (CollectedFuses == 2)
@@ -95,6 +99,7 @@ namespace LastShift
             PowerRestored = true;
             Phase = GamePhase.Powered;
             if (lighting != null) lighting.OnBreakerRestored();
+            if (horrorEvents != null) horrorEvents.OnPowerRestored();
             if (exitDoor != null) exitDoor.SetUnlocked(true);
             if (fusePanel != null) fusePanel.UpdateState(InstalledFuses, true);
             if (audioSystem != null) audioSystem.PlayVictory();
