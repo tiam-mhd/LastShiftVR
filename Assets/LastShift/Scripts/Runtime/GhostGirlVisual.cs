@@ -1,23 +1,26 @@
 using UnityEngine;
+using UnityEngine.Rendering;
 
 namespace LastShift
 {
     /// <summary>
-    /// Uses the exact user-provided transparent character artwork as a camera-facing
-    /// 2D impostor in the 3D world. This is NOT a rigged 3D model.
-    /// A true 3D rig can later replace this component without changing enemy AI.
+    /// A visible two-sided, camera-facing 2D stand-in made from the user's character image.
+    /// It is not a rigged 3D character. The mesh has front and back triangles so
+    /// backface culling cannot hide the patient after she turns around.
     /// </summary>
     public sealed class GhostGirlVisual : MonoBehaviour
     {
         public float height = 1.83f;
-        public float hoverAmplitude = .036f;
-        public float swayAmplitude = 4.0f;
+        public float hoverAmplitude = .027f;
         [Range(0f, 1f)] public float opacity = 1f;
         public bool facePlayer = true;
+        // Set by Ward13PatientBuilder so URP shader is retained in Windows builds.
+        public Material preparedMaterial;
 
         private Transform billboard;
         private Material runtimeMaterial;
         private Transform viewer;
+        private Mesh mesh;
         private bool created;
 
         private void Awake() { EnsureVisual(); }
@@ -29,87 +32,118 @@ namespace LastShift
             var texture = Resources.Load<Texture2D>("GhostGirlReference");
             if (texture == null)
             {
-                Debug.LogWarning("[LastShift] GhostGirlReference missing from Assets/LastShift/Resources.");
+                Debug.LogError("[LastShift] GhostGirlReference texture missing. Check Assets/LastShift/Resources/GhostGirlReference.png.");
                 MakeFallback();
                 return;
             }
 
-            var quad = GameObject.CreatePrimitive(PrimitiveType.Quad);
-            quad.name = "THE PATIENT - supplied artwork (2D impostor)";
-            quad.transform.SetParent(transform, false);
-            quad.transform.localPosition = new Vector3(0f, height * .5f, 0f);
-            quad.transform.localScale = new Vector3(height * texture.width / texture.height,
-                height, 1f);
-            var primitiveCollider = quad.GetComponent<Collider>();
-            if (primitiveCollider != null) Destroy(primitiveCollider);
-            billboard = quad.transform;
+            var go = new GameObject("THE PATIENT - visible two-sided artwork");
+            go.transform.SetParent(transform, false);
+            billboard = go.transform;
+            billboard.localScale = new Vector3(height * (float)texture.width / texture.height, height, 1f);
+            mesh = DoubleSidedCard();
+            go.AddComponent<MeshFilter>().sharedMesh = mesh;
+            var renderer = go.AddComponent<MeshRenderer>();
+            renderer.shadowCastingMode = ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+            renderer.lightProbeUsage = LightProbeUsage.Off;
+            renderer.reflectionProbeUsage = ReflectionProbeUsage.Off;
 
-            var shader = Shader.Find("Universal Render Pipeline/Unlit");
+            Shader shader = Shader.Find("Universal Render Pipeline/Unlit");
+            if (shader == null) shader = Shader.Find("Sprites/Default");
             if (shader == null) shader = Shader.Find("Unlit/Transparent");
-            runtimeMaterial = new Material(shader) { name = "GhostGirl Runtime Transparent" };
-            if (runtimeMaterial.HasProperty("_BaseMap"))
-                runtimeMaterial.SetTexture("_BaseMap", texture);
-            if (runtimeMaterial.HasProperty("_MainTex"))
-                runtimeMaterial.SetTexture("_MainTex", texture);
+
+            if (preparedMaterial != null) runtimeMaterial = new Material(preparedMaterial);
+            else if (shader != null) runtimeMaterial = new Material(shader);
+            if (runtimeMaterial == null)
+            {
+                Debug.LogError("[LastShift] No compatible shader for GhostGirlVisual.");
+                MakeFallback();
+                return;
+            }
+
+            runtimeMaterial.name = "The Patient | Runtime Transparent";
+            if (runtimeMaterial.HasProperty("_BaseMap")) runtimeMaterial.SetTexture("_BaseMap", texture);
+            if (runtimeMaterial.HasProperty("_MainTex")) runtimeMaterial.SetTexture("_MainTex", texture);
             if (runtimeMaterial.HasProperty("_Surface"))
             {
-                runtimeMaterial.SetFloat("_Surface", 1f);
+                runtimeMaterial.SetFloat("_Surface", 1f); // URP transparent
                 runtimeMaterial.SetFloat("_Blend", 0f);
-                runtimeMaterial.SetFloat("_SrcBlend", 5f);  // SrcAlpha
-                runtimeMaterial.SetFloat("_DstBlend", 10f); // OneMinusSrcAlpha
+                runtimeMaterial.SetFloat("_SrcBlend", (float)BlendMode.SrcAlpha);
+                runtimeMaterial.SetFloat("_DstBlend", (float)BlendMode.OneMinusSrcAlpha);
                 runtimeMaterial.SetFloat("_ZWrite", 0f);
+                runtimeMaterial.SetFloat("_Cull", 0f);
                 runtimeMaterial.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+                runtimeMaterial.DisableKeyword("_ALPHAPREMULTIPLY_ON");
             }
-            runtimeMaterial.renderQueue = 3000;
-            var renderer = quad.GetComponent<MeshRenderer>();
+            runtimeMaterial.renderQueue = (int)RenderQueue.Transparent;
             renderer.sharedMaterial = runtimeMaterial;
-            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             SetOpacity(opacity);
+            Debug.Log("[LastShift] The Patient billboard ready: " + texture.width + "x" + texture.height +
+                      ", shader " + runtimeMaterial.shader.name);
+        }
+
+        private static Mesh DoubleSidedCard()
+        {
+            var result = new Mesh { name = "Patient two-sided visible card" };
+            result.vertices = new[] {
+                new Vector3(-.5f,0,0), new Vector3(.5f,0,0),
+                new Vector3(.5f,1,0), new Vector3(-.5f,1,0),
+                new Vector3(-.5f,0,0), new Vector3(.5f,0,0),
+                new Vector3(.5f,1,0), new Vector3(-.5f,1,0)
+            };
+            result.uv = new[] {
+                new Vector2(0,0),new Vector2(1,0),new Vector2(1,1),new Vector2(0,1),
+                new Vector2(0,0),new Vector2(1,0),new Vector2(1,1),new Vector2(0,1)
+            };
+            result.triangles = new[] {0,1,2,0,2,3, 4,6,5,4,7,6};
+            result.RecalculateNormals();
+            result.RecalculateBounds();
+            return result;
         }
 
         public void SetOpacity(float alpha)
         {
             opacity = Mathf.Clamp01(alpha);
             if (runtimeMaterial == null) return;
-            var color = new Color(.77f, .84f, .96f, opacity);
-            if (runtimeMaterial.HasProperty("_BaseColor"))
-                runtimeMaterial.SetColor("_BaseColor", color);
-            if (runtimeMaterial.HasProperty("_Color"))
-                runtimeMaterial.SetColor("_Color", color);
+            var color = new Color(1f, 1f, 1f, opacity);
+            if (runtimeMaterial.HasProperty("_BaseColor")) runtimeMaterial.SetColor("_BaseColor", color);
+            if (runtimeMaterial.HasProperty("_Color")) runtimeMaterial.SetColor("_Color", color);
         }
 
-        private void Update()
+        private void LateUpdate()
         {
             if (!created) EnsureVisual();
             if (billboard == null) return;
             if (viewer == null && Camera.main != null) viewer = Camera.main.transform;
             if (facePlayer && viewer != null)
             {
-                var facing = viewer.position - transform.position;
-                facing.y = 0f;
-                if (facing.sqrMagnitude > .01f)
-                    billboard.rotation = Quaternion.LookRotation(facing, Vector3.up);
+                Vector3 toCamera = viewer.position - transform.position;
+                toCamera.y = 0f;
+                if (toCamera.sqrMagnitude > .01f)
+                    billboard.rotation = Quaternion.LookRotation(toCamera.normalized, Vector3.up);
             }
-
-            // Subtle motion without artificial camera movement (VR comfort).
-            billboard.position = transform.position + Vector3.up * (
-                height * .5f + Mathf.Sin(Time.time * 1.12f) * hoverAmplitude);
-            billboard.Rotate(0f, 0f, Mathf.Sin(Time.time * .83f) * swayAmplitude * Time.deltaTime,
-                Space.Self);
+            billboard.position = transform.position + Vector3.up *
+                (Mathf.Sin(Time.time * 1.12f) * hoverAmplitude);
         }
 
         private void MakeFallback()
         {
             var go = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-            go.name = "Missing Ghost Texture - placeholder";
+            go.name = "Visible ghost placeholder - texture or shader missing";
             go.transform.SetParent(transform, false);
             go.transform.localPosition = Vector3.up;
             go.transform.localScale = new Vector3(.55f, .9f, .55f);
+            var rend = go.GetComponent<Renderer>();
+            if (rend != null) rend.material.color = new Color(.95f,.85f,.88f);
+            var collider = go.GetComponent<Collider>();
+            if (collider != null) Destroy(collider);
         }
 
         private void OnDestroy()
         {
             if (runtimeMaterial != null) Destroy(runtimeMaterial);
+            if (mesh != null) Destroy(mesh);
         }
     }
 }
