@@ -10,7 +10,8 @@ namespace LastShift
         public LastShiftMonster monster;
         public GhostGirlVisual visual;
         public Light[] crisisLights;
-        public float firstSightingSeconds = 3.1f;
+        public float firstSightingSeconds = 6.5f;
+        public float openingDelay = 2.5f;
 
         private Coroutine sighting;
         private AudioSource ghostAudio;
@@ -23,6 +24,18 @@ namespace LastShift
         {
             whisper = Tone("The Patient - whisper", 114f, 1.2f, .12f);
             stinger = Tone("The Patient - sting", 203f, .65f, .30f);
+        }
+
+        private IEnumerator Start()
+        {
+            // A non-hostile early sighting confirms the actual character art is visible
+            // before any fuses are collected. It fades out before the real chase.
+            yield return new WaitForSeconds(openingDelay);
+            if (game != null && !game.HasEnded && game.CollectedFuses == 0 && !hunting)
+            {
+                Debug.Log("[LastShift] Opening sighting: The Patient should appear in the corridor.");
+                sighting = StartCoroutine(FirstSighting());
+            }
         }
 
         public void OnFuseCountChanged(int count)
@@ -42,7 +55,11 @@ namespace LastShift
 
         private IEnumerator FirstSighting()
         {
-            monster.transform.position = new Vector3(0f, 0f, 12.4f);
+            // At ~6 meters from the entrance, visible in flashlight range.
+            float z = -2.25f;
+            if (Camera.main != null)
+                z = Mathf.Clamp(Camera.main.transform.position.z + 6.5f, -2.25f, 11.5f);
+            monster.transform.position = new Vector3(0f, 0f, z);
             monster.gameObject.SetActive(true);
             monster.enabled = false;
             if (visual != null) { visual.EnsureVisual(); visual.SetOpacity(0f); }
