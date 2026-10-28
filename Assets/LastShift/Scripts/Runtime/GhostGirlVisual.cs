@@ -18,6 +18,7 @@ namespace LastShift
         public float hoverAmplitude = .018f;
         public bool facePlayer = true;
         public Material preparedMaterial;
+        public Material hairMaterial; // dark rear volume; original front texture remains untouched
 
         [NonSerialized] public Transform hipsBone;
         [NonSerialized] public Transform chestBone;
@@ -33,6 +34,7 @@ namespace LastShift
         private Mesh generatedMesh;
         private Transform viewer;
         private bool created;
+        private MeshRenderer[] rearHairRenderers;
         private float timeOffset;
 
         public Mesh GeneratedMesh => generatedMesh;
@@ -117,6 +119,7 @@ namespace LastShift
             }
             instanceMaterial.renderQueue = (int)RenderQueue.Transparent;
             skin.sharedMaterial = instanceMaterial;
+            BuildBackHair();
             SetOpacity(opacity);
 
             var driver = gameObject.GetComponent<PatientAnimationDriver>();
@@ -124,6 +127,37 @@ namespace LastShift
             driver.visual = this;
             Debug.Log("[LastShift] TRUE 3D skinned Patient built: " + generatedMesh.vertexCount +
                 " vertices, 7 bones, original reference texture " + source.width + "x" + source.height + ".");
+        }
+
+        /// <summary>Short layered rear hair locks give real profile depth without repainting the reference.</summary>
+        private void BuildBackHair()
+        {
+            if (headBone == null || headBone.Find("3D rear hair volume") != null) return;
+            var root = new GameObject("3D rear hair volume").transform;
+            root.SetParent(headBone, false);
+            Material mat = hairMaterial != null ? hairMaterial : preparedMaterial;
+            var segments = new List<MeshRenderer>();
+            for (int i = 0; i < 13; i++)
+            {
+                float a = (i / 12f - .5f);
+                var strand = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+                strand.name = "Volume hair lock " + (i + 1);
+                strand.transform.SetParent(root, false);
+                strand.transform.localPosition = new Vector3(a * .43f,
+                    -.12f - Mathf.Abs(a) * .055f,
+                    -.19f - .065f * Mathf.Cos(a * Mathf.PI));
+                strand.transform.localScale = new Vector3(.035f + .011f * Mathf.Abs(a),
+                    .25f + (i % 4) * .042f, .043f);
+                strand.transform.localRotation = Quaternion.Euler(
+                    Mathf.Sin(i * 2.3f) * 8f, 0f, -a * 13f);
+                var col = strand.GetComponent<Collider>();
+                if (Application.isPlaying) Destroy(col);
+                else DestroyImmediate(col);
+                var rend = strand.GetComponent<MeshRenderer>();
+                if (mat != null) rend.sharedMaterial = mat;
+                segments.Add(rend);
+            }
+            rearHairRenderers = segments.ToArray();
         }
 
         private bool TryUseSavedRig()
@@ -155,6 +189,7 @@ namespace LastShift
             }
             else instanceMaterial = skin.sharedMaterial;
             SetOpacity(opacity);
+            rearHairRenderers = headBone != null ? headBone.GetComponentsInChildren<MeshRenderer>(true) : null;
             var driver = gameObject.GetComponent<PatientAnimationDriver>();
             if (driver == null) driver = gameObject.AddComponent<PatientAnimationDriver>();
             driver.visual = this;
@@ -320,6 +355,9 @@ namespace LastShift
                 instanceMaterial.SetColor("_BaseColor", color);
             if (instanceMaterial.HasProperty("_Color"))
                 instanceMaterial.SetColor("_Color", color);
+            if (rearHairRenderers != null)
+                foreach (var rend in rearHairRenderers)
+                    if (rend != null) rend.enabled = opacity > .04f;
         }
 
         private void LateUpdate()
