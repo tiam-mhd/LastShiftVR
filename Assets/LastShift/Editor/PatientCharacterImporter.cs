@@ -41,6 +41,22 @@ public static class PatientCharacterImporter
             return false;
         }
 
+        var modelImporter = AssetImporter.GetAtPath(modelPath) as ModelImporter;
+        if (modelImporter != null)
+        {
+            // Unity can silently import an FBX in Legacy/None mode, leaving no
+            // Animator-compatible clips. Preserve existing Humanoid or Generic rigs.
+            if (modelImporter.animationType == ModelImporterAnimationType.Legacy ||
+                modelImporter.animationType == ModelImporterAnimationType.None ||
+                !modelImporter.importAnimation)
+            {
+                modelImporter.animationType = ModelImporterAnimationType.Generic;
+                modelImporter.importAnimation = true;
+                modelImporter.SaveAndReimport();
+                Debug.Log("[LastShift / FBX] Set animation import to Generic for " + modelPath);
+            }
+        }
+
         var source = AssetDatabase.LoadAssetAtPath<GameObject>(modelPath);
         if (source == null)
         {
