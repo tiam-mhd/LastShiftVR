@@ -13,6 +13,7 @@ namespace LastShift
         public LastShiftAudio audioSystem;
         public GhostDirector ghostDirector;
         public FusePanelVisual fusePanel;
+        public WardPowerLighting lighting;
 
         public GamePhase Phase { get; private set; } = GamePhase.Searching;
         public int CollectedFuses { get; private set; }
@@ -32,6 +33,7 @@ namespace LastShift
             if (HasEnded || item == null || item.WasTaken) return;
             item.MarkTaken();
             CollectedFuses++;
+            if (lighting != null) lighting.OnFuseCollected(CollectedFuses);
             if (audioSystem != null) audioSystem.PlayPickup();
 
             if (CollectedFuses == 1)
@@ -72,6 +74,7 @@ namespace LastShift
                     return;
                 }
                 InstalledFuses++;
+                if (lighting != null) lighting.OnFuseInserted(InstalledFuses);
                 if (fusePanel != null) fusePanel.UpdateState(InstalledFuses, false);
                 if (audioSystem != null) audioSystem.PlayPickup();
 
@@ -83,6 +86,7 @@ namespace LastShift
 
             PowerRestored = true;
             Phase = GamePhase.Powered;
+            if (lighting != null) lighting.OnBreakerRestored();
             if (exitDoor != null) exitDoor.SetUnlocked(true);
             if (fusePanel != null) fusePanel.UpdateState(InstalledFuses, true);
             if (audioSystem != null) audioSystem.PlayVictory();
