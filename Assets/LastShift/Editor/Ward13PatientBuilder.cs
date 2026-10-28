@@ -184,7 +184,9 @@ public static class Ward13PatientBuilder
         EditorSceneManager.MarkSceneDirty(scene);
         EditorSceneManager.SaveScene(scene);
         AssetDatabase.SaveAssets();
-        Debug.Log("[LastShift] Final Ward built. Real 3D The Patient is enabled only when the FBX and required clips are installed.");
+        Ward13SceneValidator.Validate();
+        Debug.Log("[LastShift] Final Ward generated using shabannn.fbx when present. " +
+            "View the imported model beneath THE WATCHER and the clip mapping in Console.");
     }
 
     private static void RemoveDoorDecoration(float x, float z)
