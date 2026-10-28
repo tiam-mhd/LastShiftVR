@@ -30,6 +30,12 @@ public static class PatientCharacterImporter
     public static bool AttachRealModel(LastShiftMonster monster)
     {
         if (monster == null) return false;
+        // The prototype generator leaves the monster inactive. Temporarily enable
+        // it so FBX Renderer.bounds can be measured for correct scale/grounding.
+        bool initiallyActive = monster.gameObject.activeSelf;
+        monster.gameObject.SetActive(true);
+        try
+        {
         var rig = monster.GetComponent<PatientCharacterRig>();
         if (rig == null) rig = monster.gameObject.AddComponent<PatientCharacterRig>();
 
@@ -122,6 +128,11 @@ public static class PatientCharacterImporter
 
         Debug.Log("[LastShift] The Patient is VISIBLE and READY for Ward 13: " + instance.name);
         return true;
+        }
+        finally
+        {
+            monster.gameObject.SetActive(initiallyActive);
+        }
     }
 
     private static string PickModel()
