@@ -138,6 +138,7 @@ public static class Ward13PatientBuilder
         var visualGhost = monster.gameObject.AddComponent<GhostGirlVisual>();
         visualGhost.height = 1.83f;
         visualGhost.preparedMaterial = GhostVisibilityMaterial();
+        visualGhost.hairMaterial = MakeMaterial("Patient_BlackHair", new Color(.029f, .033f, .048f), .96f);
         SavePatientRigAsAsset(visualGhost);
         monster.gameObject.AddComponent<PatientPathChase>();
         monster.chaseSpeed = .95f;
