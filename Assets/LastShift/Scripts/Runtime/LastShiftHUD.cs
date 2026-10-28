@@ -35,7 +35,7 @@ namespace LastShift
             GUI.DrawTexture(new Rect(22, 22, 410, 190), Texture2D.whiteTexture);
             GUI.color = Color.white;
             GUI.Label(new Rect(39, 34, 380, 38), "LAST SHIFT  /  WARD 13", title);
-            GUI.Label(new Rect(39, 76, 380, 23), "FUSES   " + game.CollectedFuses + "/3     |     POWER   " +
+            GUI.Label(new Rect(39, 76, 380, 23), "FUSES  " + game.CollectedFuses + "/3   |   SLOTS  " + game.InstalledFuses + "/3    |    POWER  " +
                       (game.PowerRestored ? "ONLINE" : "OFFLINE"), body);
             GUI.Label(new Rect(39, 110, 380, 75), game.Objective, body);
             GUI.Label(new Rect(38, h - 84, 600, 30), "WASD MOVE  |  MOUSE LOOK  |  E INTERACT  |  F FLASHLIGHT  |  ESC CURSOR", muted);
