@@ -21,6 +21,7 @@ public static class Ward13PatientBuilder
     [MenuItem("Tools/Last Shift/Build Final Ward 13 - Real Patient FBX")]
     public static void Build()
     {
+        if (!Ward13UrpMaterialTools.ValidateEnvironment()) return;
         // The v0.2 scene builder intentionally creates a new scene. Warn users to save
         // any manual changes BEFORE running this generator.
         Ward13AtmosphereBuilder.Build();
@@ -416,10 +417,14 @@ public static class Ward13PatientBuilder
             AssetDatabase.CreateFolder(Base, "GeneratedMaterials");
         var path = dir + "/" + name + ".mat";
         var saved = AssetDatabase.LoadAssetAtPath<Material>(path);
-        if (saved != null) { PatientSurfaceGenerator.Apply(saved, name, color); EditorUtility.SetDirty(saved); return saved; }
-        var shader = Shader.Find("Universal Render Pipeline/Lit");
-        if (shader == null) shader = Shader.Find("Standard");
-        var m = new Material(shader) { name = name };
+        if (saved != null)
+        {
+            Ward13UrpMaterialTools.Repair(saved, color, emission, roughness);
+            PatientSurfaceGenerator.Apply(saved, name, color);
+            EditorUtility.SetDirty(saved);
+            return saved;
+        }
+        var m = new Material(Ward13UrpMaterialTools.LitShader()) { name = name };
         if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", color);
         if (m.HasProperty("_Color")) m.SetColor("_Color", color);
         if (m.HasProperty("_Smoothness")) m.SetFloat("_Smoothness", 1f - roughness);
