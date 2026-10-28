@@ -37,8 +37,11 @@ namespace LastShift
             bool down = input.InteractPressed;
             if (down && !previous)
             {
-                bool used = input.HasRightHand ? UseHand() : UseRay();
-                if (!used && input.HasRightHand) Teleport();
+                // Interaction is interaction only. Previous code teleported the
+                // player on ANY failed hand pinch, sometimes outside Ward 13,
+                // leaving a flat camera gradient instead of hospital geometry.
+                if (input.HasRightHand) UseHand();
+                else UseRay();
             }
             previous = down;
         }
@@ -84,15 +87,5 @@ namespace LastShift
             return true;
         }
 
-        private void Teleport()
-        {
-            if (input.head == null || rigRoot == null) return;
-            if (!Physics.Raycast(input.head.position, input.head.forward, out var hit,
-                    teleportReach, interactionLayers, QueryTriggerInteraction.Ignore)) return;
-            if (Vector3.Dot(hit.normal, Vector3.up) < .88f ||
-                hit.point.y > rigRoot.position.y + .25f) return;
-            Vector3 delta = hit.point - input.head.position;
-            rigRoot.position += new Vector3(delta.x, 0f, delta.z);
-        }
     }
 }
