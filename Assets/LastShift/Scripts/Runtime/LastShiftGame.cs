@@ -11,14 +11,19 @@ namespace LastShift
         public LastShiftDoor exitDoor;
         public FlashlightBehaviour flashlight;
         public LastShiftAudio audioSystem;
+        public GhostDirector ghostDirector;
+        public FusePanelVisual fusePanel;
 
         public GamePhase Phase { get; private set; } = GamePhase.Searching;
         public int CollectedFuses { get; private set; }
+        public int InstalledFuses { get; private set; }
         public const int RequiredFuses = 3;
         public bool PowerRestored { get; private set; }
         public bool HasEnded => Phase == GamePhase.Won || Phase == GamePhase.Lost;
-        public string Objective { get; private set; } = "Find three fuses. Aim at an orange fuse and press E / Trigger.";
-        public string LastEvent { get; private set; } = "Your last shift begins...";
+
+        public string Objective { get; private set; } =
+            "Find three fuses. Aim at each one and press E / Trigger.";
+        public string LastEvent { get; private set; } = "You have one last shift...";
 
         private void Start() { Display(Objective); }
 
@@ -29,34 +34,59 @@ namespace LastShift
             CollectedFuses++;
             if (audioSystem != null) audioSystem.PlayPickup();
 
-            if (CollectedFuses == 2 && monster != null)
+            if (CollectedFuses == 1)
+            {
+                Display("Something moved at the far end of the corridor...");
+                if (ghostDirector != null) ghostDirector.OnFuseCountChanged(1);
+            }
+            else if (CollectedFuses == 2)
             {
                 Phase = GamePhase.Hunted;
-                monster.Wake(this, flashlight);
+                if (ghostDirector != null) ghostDirector.OnFuseCountChanged(2);
+                else if (monster != null) monster.Wake(this, flashlight);
                 if (audioSystem != null) audioSystem.PlayDanger();
-                Display("Something woke up. The flashlight can slow it. Find the last fuse!");
-                return;
+                Display("IT IS HUNTING YOU. Shine your torch at it, find the final fuse.");
             }
-
-            Display(CollectedFuses == RequiredFuses
-                ? "All fuses found! Return to the POWER BOX near the entrance."
-                : "Fuse secured. Search deeper for the next one.");
+            else
+            {
+                Display("All three fuses found! Go to the power cabinet near the exit.");
+            }
         }
 
+        /// <summary>Each interaction at the panel inserts one carried fuse;
+        /// a final interaction flips the main breaker.</summary>
         public void TryRestorePower()
         {
-            if (HasEnded) return;
-            if (CollectedFuses < RequiredFuses)
+            if (HasEnded || PowerRestored) return;
+
+            if (CollectedFuses == 0)
             {
-                if (audioSystem != null) audioSystem.PlayDenied();
-                Display("Power box needs " + (RequiredFuses - CollectedFuses) + " more fuses.");
+                Denied("No fuses collected. Find them in the wards.");
                 return;
             }
+            if (InstalledFuses < RequiredFuses)
+            {
+                if (InstalledFuses >= CollectedFuses)
+                {
+                    Denied("Find another fuse before returning to this cabinet.");
+                    return;
+                }
+                InstalledFuses++;
+                if (fusePanel != null) fusePanel.UpdateState(InstalledFuses, false);
+                if (audioSystem != null) audioSystem.PlayPickup();
+
+                Display(InstalledFuses < RequiredFuses
+                    ? "Fuse " + InstalledFuses + "/3 inserted. E / Trigger to insert more."
+                    : "All fuses installed. Press E / Trigger again to flip the BREAKER.");
+                return;
+            }
+
             PowerRestored = true;
             Phase = GamePhase.Powered;
             if (exitDoor != null) exitDoor.SetUnlocked(true);
-            if (audioSystem != null) audioSystem.PlayPickup();
-            Display("POWER RESTORED. Reach the EXIT DOOR behind the entrance.");
+            if (fusePanel != null) fusePanel.UpdateState(InstalledFuses, true);
+            if (audioSystem != null) audioSystem.PlayVictory();
+            Display("POWER RESTORED! Reach the red EXIT door.");
         }
 
         public void TryEscape()
@@ -64,14 +94,14 @@ namespace LastShift
             if (HasEnded) return;
             if (!PowerRestored)
             {
-                if (audioSystem != null) audioSystem.PlayDenied();
-                Display("Exit locked. Restore power at the fuse box first.");
+                Denied("EXIT LOCKED. Insert all three fuses and flip the breaker.");
                 return;
             }
             Phase = GamePhase.Won;
             if (monster != null) monster.StopChasing();
+            if (ghostDirector != null) ghostDirector.OnGameEnded();
             if (audioSystem != null) audioSystem.PlayVictory();
-            Display("YOU ESCAPED WARD 13. You win!");
+            Display("YOU ESCAPED WARD 13. YOU WIN!");
         }
 
         public void Caught()
@@ -79,8 +109,15 @@ namespace LastShift
             if (HasEnded) return;
             Phase = GamePhase.Lost;
             if (monster != null) monster.StopChasing();
+            if (ghostDirector != null) ghostDirector.OnGameEnded();
             if (audioSystem != null) audioSystem.PlayDanger();
-            Display("THE WATCHER CAUGHT YOU. Game over.");
+            Display("THE PATIENT CAUGHT YOU. GAME OVER.");
+        }
+
+        private void Denied(string message)
+        {
+            if (audioSystem != null) audioSystem.PlayDenied();
+            Display(message);
         }
 
         private void Display(string message)
@@ -88,9 +125,9 @@ namespace LastShift
             Objective = message;
             LastEvent = message;
             if (objectiveBoard != null)
-                objectiveBoard.text = "LAST SHIFT  |  WARD 13\n\nFUSES: " + CollectedFuses + "/3"
-                    + "\nPOWER: " + (PowerRestored ? "ONLINE" : "OFFLINE")
-                    + "\n\n" + message;
+                objectiveBoard.text = "LAST SHIFT / WARD 13\n\nFUSES: " +
+                    CollectedFuses + "/3\nINSTALLED: " + InstalledFuses + "/3" +
+                    "\nPOWER: " + (PowerRestored ? "ONLINE" : "OFFLINE") + "\n\n" + message;
             Debug.Log("[LastShift] " + message);
         }
     }
