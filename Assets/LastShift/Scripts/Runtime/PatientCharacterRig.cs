@@ -130,6 +130,16 @@ namespace LastShift
         private void PlayMotion(PatientMotion requested)
         {
             if (!HasAnimation || animator == null) return;
+            // Never use an unrelated walking clip as a scare/attack/vanish:
+            // that was the reason for bizarre gestures and apparent disappearances.
+            bool authentic = Has(requested) ||
+                (requested == PatientMotion.Run && Has(PatientMotion.Walk));
+            if (!authentic)
+            {
+                animator.speed = 0f; // hold the visible character's current pose
+                return;
+            }
+            animator.speed = 1f;
             if (currentMotion == requested) return;
             string name = "Base Layer." + requested;
             int hash = Animator.StringToHash(name);
