@@ -51,6 +51,7 @@ public static class Ward13SceneMaterialAudit
             if (renderer is ParticleSystemRenderer ||
                 renderer is LineRenderer || renderer is TrailRenderer ||
                 renderer.GetComponent<TextMesh>() != null ||
+                renderer.GetComponent("TextMeshPro") != null ||
                 renderer.GetComponent<CanvasRenderer>() != null)
                 continue;
 
@@ -59,11 +60,19 @@ public static class Ward13SceneMaterialAudit
             for (int i = 0; i < materials.Length; i++)
             {
                 Material src = materials[i];
+                string shaderName = src != null && src.shader != null ? src.shader.name : "";
+                // Specialized text and sprite shaders work in URP and must not be
+                // forced to the Lit surface shader (otherwise HUD can disappear).
+                if (shaderName.StartsWith("TextMeshPro/", StringComparison.OrdinalIgnoreCase) ||
+                    shaderName.StartsWith("UI/", StringComparison.OrdinalIgnoreCase) ||
+                    shaderName.StartsWith("Sprites/", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
                 bool invalid = src == null || src.shader == null || !src.shader.isSupported ||
-                    src.shader.name == "Hidden/InternalErrorShader" ||
-                    (!src.shader.name.StartsWith("Universal Render Pipeline/",
+                    shaderName == "Hidden/InternalErrorShader" ||
+                    (!shaderName.StartsWith("Universal Render Pipeline/",
                         StringComparison.OrdinalIgnoreCase) &&
-                     !src.shader.name.StartsWith("Shader Graphs/",
+                     !shaderName.StartsWith("Shader Graphs/",
                         StringComparison.OrdinalIgnoreCase));
 
                 if (!invalid) continue;
