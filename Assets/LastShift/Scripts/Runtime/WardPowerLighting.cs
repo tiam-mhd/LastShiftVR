@@ -29,7 +29,7 @@ namespace LastShift
         private bool initialized;
         private MaterialPropertyBlock block;
 
-        private void Awake()
+        private void Start()
         {
             block = new MaterialPropertyBlock();
             originalColors = new Color[corridorLights == null ? 0 : corridorLights.Length];
