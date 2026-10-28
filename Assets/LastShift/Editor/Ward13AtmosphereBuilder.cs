@@ -186,7 +186,7 @@ public static class Ward13AtmosphereBuilder
         if (game.objectiveBoard != null)
         {
             game.objectiveBoard.transform.position = new Vector3(2.35f, 2.33f, -8.1f);
-            game.objectiveBoard.transform.rotation = Quaternion.Euler(0, -90, 0);
+            game.objectiveBoard.transform.rotation = Quaternion.Euler(0, 90, 0);
             game.objectiveBoard.anchor = TextAnchor.UpperLeft;
             game.objectiveBoard.characterSize = .042f;
         }
