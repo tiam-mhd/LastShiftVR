@@ -3,8 +3,7 @@ using UnityEngine;
 
 namespace LastShift
 {
-    // States map to the names of REAL imported animation clips. There are no synthetic
-    // mesh generators, billboards or procedural limb rotations in this pipeline.
+    /// <summary>State requests for an actual imported model's Animator clips.</summary>
     public enum PatientMotion
     {
         Idle = 0, Walk = 1, Run = 2, Stare = 3, Frightened = 4,
@@ -14,37 +13,44 @@ namespace LastShift
     [DisallowMultipleComponent]
     public sealed class PatientCharacterRig : MonoBehaviour
     {
-        [Tooltip("Actual artist-created 3D model instance (FBX or prefab).")]
         public GameObject characterRoot;
         public Animator animator;
-        [Tooltip("Set automatically by the editor importer for imported animation states.")]
+        [Tooltip("Bits for semantic clips found in the original imported file. Other states may reuse a source clip.")]
         public int availableMotionMask;
 
         private Renderer[] renderers = Array.Empty<Renderer>();
         private PatientMotion currentMotion = (PatientMotion)(-1);
         private float lastActionUntil;
         private PatientMotion actionMotion;
-        private bool warned;
+        private bool warnedNoAnimations;
+        private Vector3 restPosition;
+        private Quaternion restRotation;
+        private bool initialized;
 
         public bool HasModel
         {
             get
             {
-                if (characterRoot == null || animator == null || !characterRoot.transform.IsChildOf(transform))
+                if (characterRoot == null || !characterRoot.transform.IsChildOf(transform))
                     return false;
                 if (renderers == null || renderers.Length == 0) CacheRenderers();
-                return renderers.Length > 0;
+                foreach (Renderer r in renderers)
+                {
+                    if (r is SkinnedMeshRenderer s && s.sharedMesh != null) return true;
+                    if (r is MeshRenderer mr && mr.GetComponent<MeshFilter>() != null &&
+                        mr.GetComponent<MeshFilter>().sharedMesh != null) return true;
+                }
+                return false;
             }
         }
 
-        // No invisible enemy: without an actual mesh AND required animation clips,
-        // the horror director won't activate the chase.
-        public bool IsReady => HasModel &&
-            characterRoot.GetComponentInChildren<SkinnedMeshRenderer>(true) != null &&
-            animator.runtimeAnimatorController != null &&
-            animator.avatar != null && animator.avatar.isValid && animator.avatar.isHuman &&
-            Has(PatientMotion.Idle) && Has(PatientMotion.Walk) &&
-            Has(PatientMotion.Run) && Has(PatientMotion.Attack);
+        // The real FBX must be visible even when it has no animation clips,
+        // rather than deleting all horror events until four arbitrary clip names match.
+        public bool IsReady => HasModel;
+
+        public bool HasAnimation => animator != null && animator.runtimeAnimatorController != null &&
+            animator.runtimeAnimatorController.animationClips != null &&
+            animator.runtimeAnimatorController.animationClips.Length > 0;
 
         public bool Has(PatientMotion motion) =>
             (availableMotionMask & (1 << (int)motion)) != 0;
@@ -55,17 +61,15 @@ namespace LastShift
             animator = modelAnimator;
             availableMotionMask = motionMask;
             CacheRenderers();
-        }
-
-        private void Awake()
-        {
-            CacheRenderers();
-            if (HasModel && animator != null)
+            initialized = false;
+            if (animator != null)
             {
-                animator.applyRootMotion = false; // The AI controls world-space motion.
+                animator.applyRootMotion = false;
                 animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
             }
         }
+
+        private void Awake() { CacheRenderers(); }
 
         private void CacheRenderers()
         {
@@ -76,9 +80,8 @@ namespace LastShift
 
         public void SetVisible(bool visible)
         {
-            if (characterRoot == null) return;
-            if (renderers == null || renderers.Length == 0) CacheRenderers();
-            foreach (var r in renderers)
+            if (!HasModel) return;
+            foreach (Renderer r in renderers)
                 if (r != null) r.enabled = visible;
         }
 
@@ -86,51 +89,79 @@ namespace LastShift
         {
             if (!IsReady) return;
             actionMotion = motion;
-            lastActionUntil = Time.time + Mathf.Max(.1f, seconds);
+            lastActionUntil = Time.time + Mathf.Max(.15f, seconds);
             PlayMotion(motion);
         }
 
         private void Update()
         {
-            if (!IsReady)
-            {
-                if (!warned && Application.isPlaying)
-                {
-                    Debug.LogWarning("[LastShift] The Patient requires a real model and Idle/Walk/Run/Attack animations. The invisible enemy has been disabled.");
-                    warned = true;
-                }
-                return;
-            }
+            if (!IsReady) return;
 
-            if (Time.time < lastActionUntil)
+            if (!initialized && characterRoot != null)
             {
-                PlayMotion(actionMotion);
-                return;
+                restPosition = characterRoot.transform.localPosition;
+                restRotation = characterRoot.transform.localRotation;
+                initialized = true;
             }
 
             var monster = GetComponent<LastShiftMonster>();
-            if (monster == null || !monster.IsHunting)
+            PatientMotion motion;
+
+            if (monster != null && monster.IsAttacking)
+                motion = PatientMotion.Attack;
+            else if (Time.time < lastActionUntil)
+                motion = actionMotion;
+            else if (monster != null && monster.IsStunned)
+                motion = PatientMotion.Frightened;
+            else if (monster != null && monster.IsHunting)
             {
-                PlayMotion(PatientMotion.Idle);
-                return;
+                motion = monster.CurrentSpeed > 1.28f ? PatientMotion.Run :
+                    monster.CurrentSpeed > .1f ? PatientMotion.Walk : PatientMotion.Stare;
             }
-            if (monster.IsAttacking) PlayMotion(PatientMotion.Attack);
-            else if (monster.IsStunned) PlayMotion(PatientMotion.Frightened);
-            else if (monster.CurrentSpeed > 1.28f) PlayMotion(PatientMotion.Run);
-            else if (monster.CurrentSpeed > .12f) PlayMotion(PatientMotion.Walk);
-            else PlayMotion(PatientMotion.Stare);
+            else motion = PatientMotion.Idle;
+
+            PlayMotion(motion);
+            // If the FBX contains no AnimationClips, give its REAL model a small
+            // whole-body idle/chase response until artist-authored clips are supplied.
+            // This does not fabricate anatomy or deform the mesh from a photograph.
+            if (!HasAnimation) ApplyWholeBodyFallback(motion);
         }
 
         private void PlayMotion(PatientMotion requested)
         {
-            if (animator == null || animator.runtimeAnimatorController == null) return;
-            PatientMotion motion = Has(requested) ? requested : PatientMotion.Idle;
-            if (currentMotion == motion) return;
-            string fullStateName = "Base Layer." + motion;
-            int stateHash = Animator.StringToHash(fullStateName);
-            if (!animator.HasState(0, stateHash)) return;
-            currentMotion = motion;
-            animator.CrossFadeInFixedTime(stateHash, .16f, 0);
+            if (!HasAnimation || animator == null) return;
+            if (currentMotion == requested) return;
+            string name = "Base Layer." + requested;
+            int hash = Animator.StringToHash(name);
+            if (!animator.HasState(0, hash)) return;
+            currentMotion = requested;
+            animator.CrossFadeInFixedTime(hash, .16f, 0);
+        }
+
+        private void ApplyWholeBodyFallback(PatientMotion motion)
+        {
+            if (!initialized || characterRoot == null) return;
+            float speed = motion == PatientMotion.Run ? 10f :
+                          motion == PatientMotion.Walk ? 5f : 1f;
+            float amplitude = motion == PatientMotion.Run ? .038f :
+                              motion == PatientMotion.Walk ? .017f : .008f;
+            float bob = Mathf.Sin(Time.time * speed) * amplitude;
+            float lean = motion == PatientMotion.Attack ? 10f :
+                         motion == PatientMotion.Frightened ? -8f :
+                         motion == PatientMotion.Run ? 4f : 0f;
+            characterRoot.transform.localPosition = Vector3.Lerp(
+                characterRoot.transform.localPosition,
+                restPosition + Vector3.up * bob, Mathf.Clamp01(Time.deltaTime * 8f));
+            characterRoot.transform.localRotation = Quaternion.Slerp(
+                characterRoot.transform.localRotation,
+                restRotation * Quaternion.Euler(lean, 0f, Mathf.Sin(Time.time * 1.5f) * 1.5f),
+                Mathf.Clamp01(Time.deltaTime * 7f));
+            if (!warnedNoAnimations)
+            {
+                Debug.LogWarning("[LastShift] The Patient REAL FBX is visible, but no original animation clips were found. " +
+                    "Idle/Walk/Run/Attack currently use whole-body placeholders. Import real clips for skeletal motion.");
+                warnedNoAnimations = true;
+            }
         }
     }
 }
