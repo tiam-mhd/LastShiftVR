@@ -137,6 +137,7 @@ public static class Ward13PatientBuilder
         col.radius = .35f;
         var visualGhost = monster.gameObject.AddComponent<GhostGirlVisual>();
         visualGhost.height = 1.83f;
+        visualGhost.preparedMaterial = GhostVisibilityMaterial();
         monster.gameObject.AddComponent<PatientPathChase>();
         monster.chaseSpeed = 1.12f;
 
@@ -166,6 +167,7 @@ public static class Ward13PatientBuilder
             new Color(1f, .15f, .12f), .68f, 4.7f);
         RoomLight("Power breaker highlight", new Vector3(1.6f, 1.7f, -7f),
             new Color(1f, .48f, .09f), .8f, 2.5f);
+        ConnectElectricCircuits(systems, game);
 
         if (Camera.main != null)
         {
@@ -353,6 +355,94 @@ public static class Ward13PatientBuilder
         go.GetComponent<Renderer>().sharedMaterial = material;
         if (!solid) Object.DestroyImmediate(go.GetComponent<Collider>());
         return go;
+    }
+
+
+    /// <summary>Explicitly referenced transparent material avoids URP shader stripping.</summary>
+    private static Material GhostVisibilityMaterial()
+    {
+        const string directory = "Assets/LastShift/GeneratedMaterials";
+        if (!AssetDatabase.IsValidFolder(directory))
+            AssetDatabase.CreateFolder(Base, "GeneratedMaterials");
+        const string path = directory + "/ThePatient_Visible.mat";
+        var material = AssetDatabase.LoadAssetAtPath<Material>(path);
+        if (material == null)
+        {
+            var shader = Shader.Find("Universal Render Pipeline/Unlit");
+            if (shader == null) shader = Shader.Find("Sprites/Default");
+            if (shader == null) shader = Shader.Find("Unlit/Transparent");
+            if (shader == null) throw new System.InvalidOperationException("No transparent shader for The Patient");
+            material = new Material(shader) { name = "The Patient - Always Visible" };
+            AssetDatabase.CreateAsset(material, path);
+        }
+        var texture = AssetDatabase.LoadAssetAtPath<Texture2D>(
+            "Assets/LastShift/Resources/GhostGirlReference.png");
+        if (texture == null)
+            Debug.LogError("[LastShift] Missing GhostGirlReference.png. Download the current Assets/LastShift folder.");
+        if (material.HasProperty("_BaseMap")) material.SetTexture("_BaseMap", texture);
+        if (material.HasProperty("_MainTex")) material.SetTexture("_MainTex", texture);
+        if (material.HasProperty("_BaseColor")) material.SetColor("_BaseColor", Color.white);
+        if (material.HasProperty("_Color")) material.SetColor("_Color", Color.white);
+        if (material.HasProperty("_Surface"))
+        {
+            material.SetFloat("_Surface", 1f);
+            material.SetFloat("_Blend", 0f);
+            material.SetFloat("_SrcBlend", 5f);
+            material.SetFloat("_DstBlend", 10f);
+            material.SetFloat("_ZWrite", 0f);
+            material.SetFloat("_Cull", 0f);
+            material.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+            material.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+        }
+        material.renderQueue = 3000;
+        EditorUtility.SetDirty(material);
+        return material;
+    }
+
+    /// <summary>Bind real-time point lights to the three physical fuse circuits.</summary>
+    private static void ConnectElectricCircuits(GameObject systems, LastShiftGame game)
+    {
+        var lighting = systems.AddComponent<WardPowerLighting>();
+        game.lighting = lighting;
+        var corridor = new List<Light>();
+        var emergency = new List<Light>();
+        foreach (var l in Object.FindObjectsByType<Light>(FindObjectsSortMode.None))
+        {
+            if (l.name.StartsWith("Flickering ward light"))
+                corridor.Add(l);
+            else if (l.name.StartsWith("Emergency light"))
+                emergency.Add(l);
+        }
+        lighting.corridorLights = corridor.ToArray();
+        lighting.emergencyLights = emergency.ToArray();
+
+        var positions = new [] {
+            new Vector3(0f, 2.65f, -7f),
+            new Vector3(5.2f, 2.55f, 1.3f),
+            new Vector3(-5.2f, 2.55f, 7.7f)
+        };
+        lighting.circuitLights = new Light[positions.Length];
+        lighting.circuitIndicators = new Renderer[positions.Length];
+        for (int i = 0; i < positions.Length; i++)
+        {
+            var go = new GameObject("POWER CIRCUIT " + (i + 1));
+            go.transform.SetParent(world, false);
+            go.transform.position = positions[i];
+            var l = go.AddComponent<Light>();
+            l.type = LightType.Point;
+            l.color = new Color(.76f,.88f,1f);
+            l.intensity = 0f;
+            l.range = 8.5f;
+            l.shadows = LightShadows.None;
+            lighting.circuitLights[i] = l;
+
+            // Signage located on the corridor ceiling; emissive state changes are immediate.
+            var indicator = Box("Circuit " + (i + 1) + " POWER STATUS",
+                new Vector3((i - 1) * .42f, 2.70f, -6.60f),
+                new Vector3(.25f, .04f, .25f), unpowered, world, false);
+            lighting.circuitIndicators[i] = indicator.GetComponent<Renderer>();
+        }
+        Debug.Log("[LastShift Lighting] Three circuits connected to fuse installation events.");
     }
 
     private static Material MakeMaterial(string name, Color color, float roughness,
