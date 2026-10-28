@@ -68,6 +68,7 @@ public static class PatientCharacterImporter
         }
 
         FitAndGround(instance, meshes, 1.72f);
+        EnsureUrpMaterials(meshes);
 
         var animator = instance.GetComponent<Animator>();
         if (animator == null) animator = instance.AddComponent<Animator>();
@@ -124,6 +125,70 @@ public static class PatientCharacterImporter
         if (all.Length > 1)
             Debug.LogWarning("[LastShift] Multiple models found; using " + all[0]);
         return all.Length == 0 ? null : all[0];
+    }
+
+    private static void EnsureUrpMaterials(Renderer[] meshes)
+    {
+        if (!AssetDatabase.IsValidFolder(Generated))
+            AssetDatabase.CreateFolder(Folder, "Generated");
+
+        int slot = 0;
+        foreach (Renderer renderer in meshes)
+        {
+            Material[] materials = renderer.sharedMaterials;
+            bool modified = false;
+            for (int i = 0; i < materials.Length; i++, slot++)
+            {
+                Material original = materials[i];
+                if (original == null)
+                {
+                    Debug.LogWarning("[LastShift / Materials] Null material on " + renderer.name +
+                        ". A neutral URP material will be used.");
+                }
+                else if (original.shader != null && original.shader.isSupported &&
+                         original.shader.name.StartsWith("Universal Render Pipeline/",
+                             StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                // Imported FBX materials can use Standard or unavailable external shaders.
+                // Convert only the instance, preserving the FBX and source textures.
+                string dst = Generated + "/Patient_URP_Material_" + slot + ".mat";
+                Material conversion = AssetDatabase.LoadAssetAtPath<Material>(dst);
+                if (conversion == null)
+                {
+                    conversion = new Material(Ward13UrpMaterialTools.LitShader());
+                    conversion.name = "Patient - URP material " + slot;
+                    AssetDatabase.CreateAsset(conversion, dst);
+                }
+                else conversion.shader = Ward13UrpMaterialTools.LitShader();
+
+                Texture texture = null;
+                Color tint = Color.white;
+                if (original != null)
+                {
+                    if (original.HasProperty("_BaseMap"))
+                        texture = original.GetTexture("_BaseMap");
+                    if (texture == null && original.HasProperty("_MainTex"))
+                        texture = original.GetTexture("_MainTex");
+                    if (original.HasProperty("_BaseColor"))
+                        tint = original.GetColor("_BaseColor");
+                    else if (original.HasProperty("_Color"))
+                        tint = original.GetColor("_Color");
+                }
+                if (conversion.HasProperty("_BaseMap"))
+                    conversion.SetTexture("_BaseMap", texture);
+                if (conversion.HasProperty("_BaseColor"))
+                    conversion.SetColor("_BaseColor", tint);
+                EditorUtility.SetDirty(conversion);
+                materials[i] = conversion;
+                modified = true;
+                if (texture == null)
+                    Debug.LogWarning("[LastShift / Materials] No diffuse texture was found for " +
+                        renderer.name + " / slot " + i + ". The actual mesh will still render, " +
+                        "but its FBX texture may need to be extracted or re-linked.");
+            }
+            if (modified) renderer.sharedMaterials = materials;
+        }
     }
 
     private static void FitAndGround(GameObject instance, Renderer[] meshes, float targetHeight)
