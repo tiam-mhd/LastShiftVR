@@ -344,6 +344,13 @@ public static class PatientCharacterImporter
             // A genuine walk clip can be sped up for the running state.
             else if (motion == PatientMotion.Run && result.ContainsKey(PatientMotion.Walk))
                 result[motion] = result[PatientMotion.Walk];
+            else if (motion == PatientMotion.Walk && clips.Count == 1 &&
+                     clips[0].name.IndexOf("take", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                // Cinema4D commonly exports its one walking take as "Take 001".
+                // Restrict this inference to locomotion; never label it an attack.
+                result[motion] = clips[0];
+            }
             sb.AppendLine(motion + " = " +
                 (result.TryGetValue(motion, out var selected) ? selected.name : "unavailable"));
         }
