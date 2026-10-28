@@ -43,11 +43,19 @@ namespace LastShift
             }
             else if (CollectedFuses == 2)
             {
-                Phase = GamePhase.Hunted;
-                if (ghostDirector != null) ghostDirector.OnFuseCountChanged(2);
-                else if (monster != null) monster.Wake(this, flashlight);
-                if (audioSystem != null) audioSystem.PlayDanger();
-                Display("IT IS HUNTING YOU. Shine your torch at it, find the final fuse.");
+                if (ghostDirector != null && ghostDirector.CharacterReady)
+                {
+                    Phase = GamePhase.Hunted;
+                    ghostDirector.OnFuseCountChanged(2);
+                    if (audioSystem != null) audioSystem.PlayDanger();
+                    Display("IT IS HUNTING YOU. Shine your torch at it, find the final fuse.");
+                }
+                else
+                {
+                    // The stage stays completable while the artist's 3D model is missing.
+                    // There can NEVER be an invisible attacking enemy.
+                    Display("2/3 fuses found. Real 3D Patient model not yet installed; continue the mission.");
+                }
             }
             else
             {
