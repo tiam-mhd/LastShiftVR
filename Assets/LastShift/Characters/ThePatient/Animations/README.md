@@ -1,24 +1,22 @@
-# Required actual animation clips
+# Animation bindings for Ghost Girl Animated
 
-Supply artist-authored / retargetable Unity AnimationClips named EXACTLY:
-- `Idle` (required)
-- `Walk` (required; in-place)
-- `Run` (required; in-place)
-- `Attack` (required)
-Optional supported:
-- `Stare`
-- `Frightened`
-- `Scare`
-- `Appear`
-- `Vanish`
-- `Stunned`
+The importer first reads **actual AnimationClip subassets of `Model/shabannn.fbx`**.
+It also scans this folder for `.anim` and `.fbx` animation files.
 
-Valid inputs: `.anim` clips or FBX files containing clips with exactly those names.
-Set the individual animation FBX files' Rig to Humanoid, Avatar Definition 'Copy From Other Avatar' when retargeting.
+State mappings:
+- Idle: idle / breathe / stand / default / Take 001
+- Walk: walk / creep / move / locomotion
+- Run: run / sprint / chase
+- Stare: stare / look / watch
+- Frightened/Stunned: frightened / recoil / flinch / hit
+- Scare: scare / scream / jump
+- Attack: attack / strike / grab / lunge
+- Appear/Vanish: appear / spawn / disappear / fade
 
-Loop Idle/Walk/Run. Make Attack, Scare, Appear and Vanish non-looping.
-The runtime uses Animator.CrossFadeInFixedTime to activate states.
+These are aliases, not promises that such clips exist in the downloaded asset.
+The Unity Console logs each real imported clip and which state used a native match
+versus a fallback. If you want distinct realistic walking, running, attacking
+and disappearing motions, supply authentic retarget-compatible `.anim` or FBX clips
+with these names. If source clips are absent, the real 3D model still remains visible.
 
-No animations are fabricated in code. Without the four required clips
-or a valid Humanoid avatar, **the enemy remains disabled** and cannot
-kill the player while invisible.
+Motion is kept in-place where appropriate because LastShiftMonster controls world translation.
