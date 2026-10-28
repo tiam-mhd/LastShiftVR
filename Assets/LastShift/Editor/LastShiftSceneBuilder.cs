@@ -96,6 +96,10 @@ public static class LastShiftSceneBuilder {
   input.rightController=right.transform;
   pointer.rigRoot=rig.transform;
   torch.rightHand=right.transform;
+  var desktop = rig.AddComponent<DesktopPreview>();
+  desktop.head=cam.transform;
+  desktop.leftController=left.transform;
+  desktop.rightController=right.transform;
   string path=root+"/Scenes/Ward13_Prototype.unity";
   EditorSceneManager.MarkSceneDirty(scene);
   EditorSceneManager.SaveScene(scene,path);
