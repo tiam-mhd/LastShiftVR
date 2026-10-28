@@ -126,8 +126,11 @@ namespace LastShift
             if (animator == null || animator.runtimeAnimatorController == null) return;
             PatientMotion motion = Has(requested) ? requested : PatientMotion.Idle;
             if (currentMotion == motion) return;
+            string fullStateName = "Base Layer." + motion;
+            int stateHash = Animator.StringToHash(fullStateName);
+            if (!animator.HasState(0, stateHash)) return;
             currentMotion = motion;
-            animator.CrossFadeInFixedTime(motion.ToString(), .16f, 0);
+            animator.CrossFadeInFixedTime(stateHash, .16f, 0);
         }
     }
 }
