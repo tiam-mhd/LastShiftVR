@@ -1,39 +1,47 @@
-# LastShiftVR — The Patient 3D / Windows PCVR
+# LastShiftVR — Real 3D Character Integration (Windows PCVR)
 
-A Unity 6 + URP + OpenXR survival-horror prototype for Windows PCVR, using Meta Quest 2/3/3S through Quest Link. Also includes keyboard/mouse desktop preview.
+Unity 6 + URP + OpenXR horror game prototype for Windows. Play through Meta Quest Link with Quest 2 / 3 / 3S, using controllers; keyboard/mouse desktop preview also works.
 
-## Latest release source: The Patient 3D
-The original user-supplied character image is the front texture of a **volumetric Unity skinned mesh** with **seven articulated bones**. Procedural C# animations cover idle, stare, walking, running, recoil from light, scare, attack, appearing and vanishing.
+## No more fake 3D
+The old image-extruded portrait mesh, 2D billboard, standalone scan-volume OBJ/MTL, and synthetic bone-pose animation scripts have been **removed**. The original character PNG remains only as an artist's reference, not an in-game renderer.
 
-**Important model limitation:** The original reference supplies only a frontal view. Front texture details are retained; geometry depth, sides and the reverse are inferred. This is a playable prototype reconstruction, not a lossless 360-degree realistic sculpt or a mocap animation package.
+**A finished photorealistic character model is NOT bundled.** The real 3D asset and authentic animation clips must be supplied separately. The game will never spawn an invisible lethal enemy when required assets are missing.
 
-The repository also includes the standalone **static** model `Assets/LastShift/Models/ThePatient_ScanVolume.obj` and its `.mtl`, referencing the original `Resources/GhostGirlReference.png` texture. The **animated** mesh is generated and serialized by Unity as `Assets/LastShift/GeneratedMeshes/ThePatient_3D_Rigged.asset` when you build the scene.
+## New pipeline
 
-## Setup on Windows
+Expected files:
+- `Assets/LastShift/Characters/ThePatient/Model/ThePatient.fbx` OR `ThePatient.prefab`
+- `Assets/LastShift/Characters/ThePatient/Animations/`: clips named **Idle, Walk, Run, Attack** (required), plus Stare, Frightened, Scare, Appear, Vanish, Stunned (optional)
+- `Assets/LastShift/Resources/GhostGirlReference.png`: reference image only
 
-1. Install Unity 6 (URP/Universal 3D project, Windows Build Support).
-2. From Unity Registry install **Input System**, **XR Plug-in Management**, **OpenXR Plugin** and **XR Hands**.
-3. Download GitHub ZIP and copy **only** `Assets/LastShift` to an existing Unity Universal 3D project's `Assets`. Keep that project's original `Packages` and `ProjectSettings`.
-4. Wait for error-free C# compilation after `Assets > Refresh`.
-5. In Unity select the **one and only** production menu:
-   `Tools > Last Shift > Build Final Ward 13 - The Patient 3D`
-6. Open `Assets/LastShift/Scenes/Ward13_Prototype.unity` (opened by builder) and press Play.
+Unity model import requires:
+- an actual rigged **SkinnedMeshRenderer**
+- **Humanoid** rig with a valid Avatar
+- appropriately retargeted actual AnimationClips
+- correct URP/PBR materials and real 360-degree geometry
 
-**Desktop:** WASD move, mouse look, E interact, F flashlight. **PCVR Quest Link:** left stick move, right stick snap-turn, right trigger interact, right grip flashlight.
+`PatientCharacterImporter.cs` searches the specified directory for an FBX or prefab, imports clips (including FBX subclips), generates `ThePatient.controller`, and binds the model and Animator to existing enemy AI. `PatientCharacterRig.cs` plays those named states via cross-fading, with no fabricated motions.
 
-The 3D character appears during scripted events and chases the player. The rig is saved in the generated scene and can be inspected by temporarily enabling `THE WATCHER` in the Hierarchy (when not in Play). The character is hidden initially by design.
+## Open in Unity
+1. Install Unity 6, create a new Universal 3D project, and install Input System, XR Plug-in Management, OpenXR Plugin and XR Hands. Windows Build Support for Windows EXE.
+2. Copy **only** `Assets/LastShift` from this repo to your Unity project; preserve its working `Packages` and `ProjectSettings`.
+3. **Delete stale local files** if you previously installed the fake 3D version: `GhostGirlVisual.cs`, `PatientAnimationDriver.cs`, `ThePatient_ScanVolume.obj`, `ThePatient_ScanVolume.mtl`, and `GeneratedMeshes/ThePatient_3D_Rigged.asset`.
+4. Add your real `ThePatient.fbx` and animation clips to the specified Character folders. Select FBX in Unity Inspector > Rig > Humanoid > Create From This Model > Apply. Import animation FBXs as Humanoid.
+5. From Unity menu choose the **only final production action**:
 
-## Game loop
-Collect three fuses, escape the Patient, insert them into the power cabinet one at a time, flip the breaker, then open the exit. Fuse pickups flicker the electrical system, each inserted fuse powers a circuit and the breaker restores ward illumination.
+   `Tools > Last Shift > Build Final Ward 13 - Real Patient FBX`
 
-## Only final menus
-Legacy generators and debug/test/validation entries are hidden or removed from `Tools > Last Shift`. There is one final scene generation entry.
+6. Open/Play the generated `Assets/LastShift/Scenes/Ward13_Prototype.unity`. If the model/clips are missing, the AI chase is disabled but the fuse gameplay and lighting still function.
 
-## Caveats
-- This is a prototype. Procedural bone poses do not match the quality of artist-authored animations.
-- Existing environment art is procedural and not photorealistic.
-- No prebuilt .exe is included. Code has not been compiled or tested on an actual Unity + Quest hardware setup in the authoring environment.
-- Windows standalone Quest Link hand tracking is not guaranteed; controllers remain supported.
-- Unity can regenerate the scene and locally generated 3D mesh; **back up manual scene changes** before re-running the generator.
+### Controls
+- Desktop: WASD, mouse, E interact, F flashlight, Esc free cursor.
+- Meta PCVR: Quest Link with active OpenXR runtime; left stick move, right stick snap-turn, right trigger interact, right grip flashlight.
+- Hand tracking on Windows EXE is NOT guaranteed by Quest Link. Controllers remain supported.
 
-[Persian setup and full notes](README_FA.md)
+### Rig requirements
+See `Characters/ThePatient/ART_BRIEF.md` for likeness, materials, full 360-degree topology, realistic hair/clothing and animation requirements.
+
+## Status
+This repository contains **source and import integration**, not an artist-made character FBX, animations or a prebuilt Windows EXE. Unity compilation and on-device testing are required. The single frontal reference image cannot guarantee a perfect unseen-side/back likeness.
+
+[Persian instructions / راهنمای فارسی](README_FA.md)
