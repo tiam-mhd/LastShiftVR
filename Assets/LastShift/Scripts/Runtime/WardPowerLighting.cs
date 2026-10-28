@@ -28,6 +28,7 @@ namespace LastShift
         private Color initialFog;
         private bool initialized;
         private MaterialPropertyBlock block;
+        private int appliedIndicatorState = -1;
 
         private void Start()
         {
@@ -90,8 +91,10 @@ namespace LastShift
             if (!initialized) return;
             float dt = Time.deltaTime;
             pulseTime = Mathf.Max(0f, pulseTime - dt);
-            float flash = pulseTime > 0f ? (Mathf.Sin(Time.time * 30f) * .5f + .5f)
-                    * Mathf.Clamp01(pulseTime * 1.8f) : 0f;
+            // Avoid 30Hz full-ward light changes, shadow atlas churn and high-frequency
+            // VR flicker. A slow 5Hz voltage pulse is sufficient for the scare.
+            float flash = pulseTime > 0f ? (Mathf.Sin(Time.time * 10f) * .5f + .5f)
+                    * Mathf.Clamp01(pulseTime * 1.35f) : 0f;
             float t = Mathf.Clamp01(dt * transitionSpeed);
 
             if (corridorLights != null)
@@ -100,7 +103,7 @@ namespace LastShift
                     var l = corridorLights[i];
                     if (l == null) continue;
                     float destination = powered ? restoredCorridorIntensity :
-                        (.11f + flash * 1.55f);
+                        (.11f + flash * .55f);
                     l.intensity = Mathf.Lerp(l.intensity, destination, Mathf.Clamp01(dt * 9f));
                     l.color = Color.Lerp(l.color,
                         powered ? restoredColor : originalColors[i], t);
@@ -111,7 +114,7 @@ namespace LastShift
                 {
                     if (l == null) continue;
                     l.intensity = Mathf.Lerp(l.intensity,
-                        powered ? 0f : emergencyIntensity + flash * 1.5f, t);
+                        powered ? 0f : emergencyIntensity + flash * .6f, t);
                 }
 
             if (circuitLights != null)
@@ -122,7 +125,7 @@ namespace LastShift
                     bool enabledCircuit = powered || i < installed;
                     float desired = enabledCircuit ? circuitOnIntensity : 0f;
                     if (enabledCircuit && pulseTime > 0f)
-                        desired += flash * 1.35f;
+                        desired += flash * .45f;
                     l.intensity = Mathf.Lerp(l.intensity, desired, Mathf.Clamp01(dt * 4.8f));
                 }
 
@@ -131,8 +134,10 @@ namespace LastShift
             RenderSettings.fogColor = Color.Lerp(RenderSettings.fogColor,
                 powered ? new Color(.085f, .11f, .13f) : initialFog, t);
 
-            if (circuitIndicators != null)
+            int indicatorState = powered ? 4 : installed;
+            if (circuitIndicators != null && indicatorState != appliedIndicatorState)
             {
+                appliedIndicatorState = indicatorState;
                 for (int i = 0; i < circuitIndicators.Length; i++)
                 {
                     var r = circuitIndicators[i];
