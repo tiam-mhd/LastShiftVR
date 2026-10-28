@@ -1,23 +1,19 @@
-# Real The Patient Model
+# Imported model — Ghost Girl Animated
 
-Put ONE real artist-authored character file here:
-- `ThePatient.fbx` — **preferred**; or
-- `ThePatient.prefab` — already configured prefab with a skinned character.
+**Actual file already in this repository:** `shabannn.fbx` (about 21.9 MB).
 
-A single front-facing PNG is NOT a real model. Do not place 2D impostors, scan-volume OBJ files or extruded photo meshes here.
+Creator: Shaban Hafizsalim / shabaninteractive  
+Original: https://sketchfab.com/3d-models/ghost-girl-animated-1091b3ee172f4951aaeafa2581f9de1d  
+License: CC BY 4.0. Credit information: `../ATTRIBUTION.md`.
 
-Unity Inspector for ThePatient.fbx:
-1. Rig > Animation Type = Humanoid
-2. Avatar Definition = Create From This Model
-3. Check the Avatar Configuration (valid green mapping)
-4. Model has **SkinnedMeshRenderer** with actual face, hair, dress, hands, feet and rear geometry
-5. Materials use URP/Lit where practical
-6. Set scale so the character stands approximately 1.5–1.9 meters high in Unity
-7. Apply; no need to write custom C# scripts.
+The final Ward 13 builder automatically locates `shabannn.fbx`; you do **not** need to rename it.
+It instantiates the genuine MeshRenderer/SkinnedMeshRenderer meshes and fits them to about 1.72 m.
 
-Character likeness reference: `Assets/LastShift/Resources/GhostGirlReference.png` (reference ONLY, not runtime art).
+The builder scans the actual AnimationClip subassets imported from the FBX and any optional extra
+clips in `../Animations/`, logs their real names, and maps them to Idle/Walk/Run/Attack/etc.
+If a state is missing, it reuses the closest imported motion where possible. If no source
+animations exist, the genuine 3D mesh remains visible and can pursue with minimal whole-body
+motion; this is **not** a substitute for sculpted skeletal walking/running/attack animations.
 
-Run the single menu item:
-Tools > Last Shift > Build Final Ward 13 - Real Patient FBX
-
-The editor imports the FBX, binds Animator, and adds a generated Controller if the clips below are available.
+If Unity warns about missing diffuse textures, extract/relink textures in the FBX Materials
+tab and ensure URP Lit materials are assigned. Source file is not modified.
